@@ -7,6 +7,9 @@
 <!-- ─── EDIT: page title shown in the browser tab ─── -->
 <title>Games I made</title>
 <meta name="description" content="Games you can play in your browser.">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,6 +45,7 @@
 
   body {
     margin: 0;
+    overflow-x: hidden;
     background: var(--paper);
     color: var(--ink);
     font-family: var(--display);
@@ -67,6 +71,7 @@
   }
 
   .page {
+    position: relative;
     max-width: 46rem;
     margin: 0 auto;
     padding: clamp(2.5rem, 10vh, 6rem) clamp(1.25rem, 5vw, 2.5rem) 4rem;
@@ -223,6 +228,65 @@
   .foot a:hover,
   .foot a:focus-visible { color: var(--jade); border-bottom-color: var(--jade); }
 
+
+  /* ── Pixel critters ─────────────────────────── */
+
+  /* Pinned to the browser window rather than to the content, so adding
+     or removing games never shifts them. --gutter measures from the
+     middle of the window out to the empty margin beside the text. */
+  .px {
+    position: fixed;
+    --gutter: calc(50% - 26.5rem);
+    width: 3rem;
+    height: auto;
+    color: var(--c, var(--cobalt));
+    pointer-events: none;
+    transform-origin: 50% 100%;
+  }
+
+  .px--robot   { --c: var(--cobalt);   top: 5rem;     right: var(--gutter); width: 3.4rem;
+                 animation: clank 2.4s steps(8, end) infinite; }
+  .px--frog    { --c: var(--jade);     top: 15rem;    left:  var(--gutter);
+                 animation: hop 3.4s ease-in-out 0.6s infinite; }
+  .px--gem     { --c: var(--marigold); bottom: 13rem; right: var(--gutter); width: 2.4rem;
+                 animation: spin 7s linear infinite; }
+  .px--critter { --c: var(--violet);   bottom: 5rem;  left:  var(--gutter);
+                 animation: waddle 2.6s ease-in-out 1.2s infinite; }
+
+  /* Each critter moves the way its own thing would move. */
+  @keyframes clank {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25%      { transform: translateY(-0.35rem) rotate(-5deg); }
+    50%      { transform: translateY(0) rotate(0deg); }
+    75%      { transform: translateY(-0.2rem) rotate(5deg); }
+  }
+
+  @keyframes hop {
+    0%, 60%, 100% { transform: translateY(0) scale(1, 1); }
+    66%           { transform: translateY(0) scale(1.12, 0.8); }
+    75%           { transform: translateY(-1.2rem) scale(0.92, 1.12); }
+    86%           { transform: translateY(0) scale(1.1, 0.86); }
+    93%           { transform: translateY(0) scale(1, 1); }
+  }
+
+  @keyframes spin {
+    0%   { transform: rotate(0deg) scale(1); }
+    50%  { transform: rotate(180deg) scale(1.2); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
+
+  @keyframes waddle {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    25%      { transform: translate(-0.35rem, -0.15rem) rotate(-9deg); }
+    50%      { transform: translate(0, -0.3rem) rotate(0deg); }
+    75%      { transform: translate(0.35rem, -0.15rem) rotate(9deg); }
+  }
+
+  /* they live in the outer margins, so they only appear when there's room */
+  @media (max-width: 1100px) {
+    .px { display: none; }
+  }
+
   /* ── Load sequence ──────────────────────────── */
 
   .rise {
@@ -249,9 +313,100 @@
 
 <body>
 
+<!-- ─── Pixel critters. Original artwork, drawn as squares on a grid.
+     Each one takes its colour from the --c value set on the <use> tag.
+     The blinking lives in here because it happens inside the drawings.
+─────────────────────────────────────────────────────────────────── -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <style>
+    .blink-a { animation: blink 4.7s infinite; }
+    .blink-b { animation: blink 6.1s infinite; }
+    .blink-c { animation: blink 5.3s infinite; }
+    @keyframes blink {
+      0%, 93%, 97%, 100% { opacity: 1; }
+      94%, 96%           { opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .blink-a, .blink-b, .blink-c { animation: none; }
+    }
+  </style>
+  <defs>
+
+    <symbol id="px-robot" viewBox="0 0 10 10">
+      <g fill="currentColor" shape-rendering="crispEdges">
+        <rect x="4" y="0" width="1" height="2"/>
+        <rect x="2" y="2" width="6" height="3"/>
+        <rect x="3" y="5" width="4" height="1"/>
+        <rect x="1" y="6" width="8" height="3"/>
+        <rect x="0" y="6" width="1" height="2"/>
+        <rect x="9" y="6" width="1" height="2"/>
+        <rect x="2" y="9" width="2" height="1"/>
+        <rect x="6" y="9" width="2" height="1"/>
+      </g>
+      <g class="blink-a" fill="#efedf4" shape-rendering="crispEdges">
+        <rect x="3" y="3" width="1" height="1"/>
+        <rect x="6" y="3" width="1" height="1"/>
+      </g>
+      <rect x="3" y="7" width="4" height="1" fill="#efedf4" shape-rendering="crispEdges"/>
+    </symbol>
+
+    <symbol id="px-frog" viewBox="0 0 10 8">
+      <g fill="currentColor" shape-rendering="crispEdges">
+        <rect x="1" y="0" width="2" height="2"/>
+        <rect x="7" y="0" width="2" height="2"/>
+        <rect x="1" y="2" width="8" height="4"/>
+        <rect x="0" y="6" width="3" height="1"/>
+        <rect x="7" y="6" width="3" height="1"/>
+        <rect x="2" y="6" width="6" height="1"/>
+      </g>
+      <g class="blink-b" fill="#efedf4" shape-rendering="crispEdges">
+        <rect x="1" y="0" width="1" height="1"/>
+        <rect x="8" y="0" width="1" height="1"/>
+      </g>
+      <rect x="3" y="4" width="4" height="1" fill="#efedf4" shape-rendering="crispEdges"/>
+    </symbol>
+
+    <symbol id="px-gem" viewBox="0 0 10 8">
+      <g fill="currentColor" shape-rendering="crispEdges">
+        <rect x="4" y="0" width="2" height="1"/>
+        <rect x="3" y="1" width="4" height="1"/>
+        <rect x="2" y="2" width="6" height="1"/>
+        <rect x="1" y="3" width="8" height="2"/>
+        <rect x="2" y="5" width="6" height="1"/>
+        <rect x="3" y="6" width="4" height="1"/>
+        <rect x="4" y="7" width="2" height="1"/>
+      </g>
+      <rect class="blink-c" x="3" y="2" width="1" height="1" fill="#efedf4" shape-rendering="crispEdges"/>
+    </symbol>
+
+    <symbol id="px-critter" viewBox="0 0 10 8">
+      <g fill="currentColor" shape-rendering="crispEdges">
+        <rect x="1" y="0" width="1" height="1"/>
+        <rect x="8" y="0" width="1" height="1"/>
+        <rect x="2" y="1" width="6" height="1"/>
+        <rect x="1" y="2" width="8" height="4"/>
+        <rect x="1" y="6" width="2" height="1"/>
+        <rect x="7" y="6" width="2" height="1"/>
+      </g>
+      <g class="blink-c" fill="#efedf4" shape-rendering="crispEdges">
+        <rect x="3" y="3" width="1" height="1"/>
+        <rect x="6" y="3" width="1" height="1"/>
+      </g>
+    </symbol>
+
+  </defs>
+</svg>
+
 <div class="strip"></div>
 
 <div class="page">
+
+  <!-- decoration only, so hidden from screen readers -->
+  <svg class="px px--robot" aria-hidden="true"><use href="#px-robot"/></svg>
+  <svg class="px px--frog" aria-hidden="true"><use href="#px-frog"/></svg>
+  <svg class="px px--gem" aria-hidden="true"><use href="#px-gem"/></svg>
+  <svg class="px px--critter" aria-hidden="true"><use href="#px-critter"/></svg>
+
 
   <!-- ─── EDIT: the heading and the introduction ─── -->
   <header>
@@ -273,24 +428,24 @@
         <a class="entry" href="https://example.com" target="_blank" rel="noopener">
           <span class="entry__head">
             <span class="chip" aria-hidden="true"></span>
-            <h2 class="entry__title">Ipsum Lorem</h2>
+            <h2 class="entry__title">Lorem Ipsom</h2>
             <span class="entry__arrow" aria-hidden="true">&rarr;</span>
           </span>
-          <p class="entry__desc">Lorem Ipsum</p>
+          <p class="entry__desc">Lorem Ipsom.</p>
           <p class="entry__meta">
-            <span class="entry__url">games.marchant.info/lorum_ipsum.html</span>
+            <span class="entry__url">Lorem-Ipsom.com</span>
             <span class="sep" aria-hidden="true">/</span>
             <span>2026</span>
           </p>
         </a>
       </li>
-<!--
+      <!--
+
       <li style="--c: var(--jade)">
         <a class="entry" href="https://example.com" target="_blank" rel="noopener">
           <span class="entry__head">
             <span class="chip" aria-hidden="true"></span>
             <h2 class="entry__title">Frog Jump</h2>
-
             <span class="entry__arrow" aria-hidden="true">&rarr;</span>
           </span>
           <p class="entry__desc">Press the space bar to jump over the logs. It gets faster and faster until you lose. My best is 41.</p>
@@ -317,16 +472,18 @@
           </p>
         </a>
       </li>
--->
+      -->
 
     </ul>
 
   </main>
 
   <!-- ─── EDIT: your link ─── -->
+  <!--
   <footer class="foot">
     <a href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
   </footer>
+  -->
 
 </div>
 </body>

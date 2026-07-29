@@ -6,6 +6,9 @@
 
 <title>This page isn't here</title>
 <meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,6 +40,7 @@
   body {
     margin: 0;
     min-height: 100vh;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     background: var(--paper);
@@ -64,6 +68,7 @@
   }
 
   .page {
+    position: relative;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -140,6 +145,31 @@
   .back:hover .back__arrow,
   .back:focus-visible .back__arrow { transform: translateX(-0.25rem); }
 
+
+  /* ── Pixel critters ─────────────────────────── */
+
+  .px {
+    position: absolute;
+    width: 3rem;
+    height: auto;
+    color: var(--c, var(--cobalt));
+    pointer-events: none;
+    animation: bob 4s ease-in-out infinite;
+  }
+
+  .px--robot   { --c: var(--cobalt);   top: 3rem;     right: -5rem; width: 3.4rem; animation-delay: 0s; }
+  .px--critter { --c: var(--violet);   bottom: 4rem;  left: -5rem;  animation-delay: 1.2s; }
+  .px--gem     { --c: var(--marigold); bottom: 12rem; right: -4rem; width: 2.4rem; animation-delay: 2.2s; }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-0.4rem); }
+  }
+
+  @media (max-width: 1100px) {
+    .px { display: none; }
+  }
+
   .rise {
     animation: rise 500ms cubic-bezier(0.2, 0.7, 0.3, 1) backwards;
   }
@@ -166,9 +196,85 @@
 
 <body>
 
+<!-- ─── Pixel critters. Original artwork, drawn as squares on a grid.
+     Each one takes its colour from the --c value set on the <use> tag.
+─────────────────────────────────────────────────────────────────── -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+
+    <symbol id="px-robot" viewBox="0 0 10 10">
+      <g fill="currentColor" shape-rendering="crispEdges">
+        <rect x="4" y="0" width="1" height="2"/>
+        <rect x="2" y="2" width="6" height="3"/>
+        <rect x="3" y="5" width="4" height="1"/>
+        <rect x="1" y="6" width="8" height="3"/>
+        <rect x="0" y="6" width="1" height="2"/>
+        <rect x="9" y="6" width="1" height="2"/>
+        <rect x="2" y="9" width="2" height="1"/>
+        <rect x="6" y="9" width="2" height="1"/>
+      </g>
+      <g fill="#efedf4" shape-rendering="crispEdges">
+        <rect x="3" y="3" width="1" height="1"/>
+        <rect x="6" y="3" width="1" height="1"/>
+        <rect x="3" y="7" width="4" height="1"/>
+      </g>
+    </symbol>
+
+    <symbol id="px-frog" viewBox="0 0 10 8">
+      <g fill="currentColor" shape-rendering="crispEdges">
+        <rect x="1" y="0" width="2" height="2"/>
+        <rect x="7" y="0" width="2" height="2"/>
+        <rect x="1" y="2" width="8" height="4"/>
+        <rect x="0" y="6" width="3" height="1"/>
+        <rect x="7" y="6" width="3" height="1"/>
+        <rect x="2" y="6" width="6" height="1"/>
+      </g>
+      <g fill="#efedf4" shape-rendering="crispEdges">
+        <rect x="1" y="0" width="1" height="1"/>
+        <rect x="8" y="0" width="1" height="1"/>
+        <rect x="3" y="4" width="4" height="1"/>
+      </g>
+    </symbol>
+
+    <symbol id="px-gem" viewBox="0 0 10 8">
+      <g fill="currentColor" shape-rendering="crispEdges">
+        <rect x="4" y="0" width="2" height="1"/>
+        <rect x="3" y="1" width="4" height="1"/>
+        <rect x="2" y="2" width="6" height="1"/>
+        <rect x="1" y="3" width="8" height="2"/>
+        <rect x="2" y="5" width="6" height="1"/>
+        <rect x="3" y="6" width="4" height="1"/>
+        <rect x="4" y="7" width="2" height="1"/>
+      </g>
+      <rect x="3" y="2" width="1" height="1" fill="#efedf4" shape-rendering="crispEdges"/>
+    </symbol>
+
+    <symbol id="px-critter" viewBox="0 0 10 8">
+      <g fill="currentColor" shape-rendering="crispEdges">
+        <rect x="1" y="0" width="1" height="1"/>
+        <rect x="8" y="0" width="1" height="1"/>
+        <rect x="2" y="1" width="6" height="1"/>
+        <rect x="1" y="2" width="8" height="4"/>
+        <rect x="1" y="6" width="2" height="1"/>
+        <rect x="7" y="6" width="2" height="1"/>
+      </g>
+      <g fill="#efedf4" shape-rendering="crispEdges">
+        <rect x="3" y="3" width="1" height="1"/>
+        <rect x="6" y="3" width="1" height="1"/>
+      </g>
+    </symbol>
+
+  </defs>
+</svg>
+
 <div class="strip"></div>
 
 <main class="page">
+
+  <svg class="px px--robot" aria-hidden="true"><use href="#px-robot"/></svg>
+  <svg class="px px--critter" aria-hidden="true"><use href="#px-critter"/></svg>
+  <svg class="px px--gem" aria-hidden="true"><use href="#px-gem"/></svg>
+
 
   <p class="code rise" aria-hidden="true"><span>4</span><span>0</span><span>4</span></p>
 

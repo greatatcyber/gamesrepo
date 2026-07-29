@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- A play triangle built from squares, stepping through the six site colours.
+       The background flips to ink when the browser is in dark mode. -->
+  <style>
+    .bg { fill: #efedf4; }
+    @media (prefers-color-scheme: dark) { .bg { fill: #241f33; } }
+  </style>
+  <rect class="bg" width="16" height="16"/>
+  <rect x="2"  y="2" width="2" height="12" fill="#d8452f"/>
+  <rect x="4"  y="3" width="2" height="10" fill="#c97a10"/>
+  <rect x="6"  y="4" width="2" height="8"  fill="#1f8368"/>
+  <rect x="8"  y="5" width="2" height="6"  fill="#2a63bd"/>
+  <rect x="10" y="6" width="2" height="4"  fill="#7b45b8"/>
+  <rect x="12" y="7" width="2" height="2"  fill="#c02f74"/>
+</svg>
