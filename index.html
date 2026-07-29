@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- ─── EDIT: page title shown in the browser tab ─── -->
+<title>Games I made</title>
+<meta name="description" content="Games you can play in your browser.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    /* page */
+    --paper:      #efedf4;
+    --paper-lift: #f8f7fb;
+    --ink:        #241f33;
+    --ink-soft:   #635c75;
+    --rule:       #d8d3e2;
+
+    /* the six game colours — reuse these when you add a game */
+    --poppy:     #d8452f;
+    --marigold:  #c97a10;
+    --jade:      #1f8368;
+    --cobalt:    #2a63bd;
+    --violet:    #7b45b8;
+    --raspberry: #c02f74;
+
+    /* every row falls back to this if no colour is set */
+    --c: var(--cobalt);
+
+    --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--display);
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; }
+
+  /* the six colours lined up across the top, like a row of cartridges */
+  .strip {
+    height: 7px;
+    background: linear-gradient(
+      to right,
+      var(--poppy)     0 16.66%,
+      var(--marigold)  16.66% 33.33%,
+      var(--jade)      33.33% 50%,
+      var(--cobalt)    50% 66.66%,
+      var(--violet)    66.66% 83.33%,
+      var(--raspberry) 83.33% 100%
+    );
+  }
+
+  .page {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 10vh, 6rem) clamp(1.25rem, 5vw, 2.5rem) 4rem;
+  }
+
+  /* ── Masthead ───────────────────────────────── */
+
+  .eyebrow {
+    margin: 0 0 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--raspberry);
+  }
+
+  .title {
+    margin: 0;
+    font-size: clamp(2.4rem, 8vw, 3.6rem);
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.02;
+  }
+
+  .lede {
+    margin: 1.1rem 0 0;
+    max-width: 34rem;
+    color: var(--ink-soft);
+    font-size: 1.0625rem;
+  }
+
+  /* ── Game list ──────────────────────────────── */
+
+  .stack {
+    list-style: none;
+    margin: clamp(3rem, 8vh, 4.5rem) 0 0;
+    padding: 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .stack > li + li { border-top: 1px solid var(--rule); }
+
+  .entry {
+    display: block;
+    position: relative;
+    padding: 1.6rem 1rem;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: background-color 160ms ease;
+  }
+
+  .entry:hover,
+  .entry:focus-visible { background: color-mix(in srgb, var(--c) 9%, var(--paper-lift)); }
+
+  .entry:focus-visible {
+    outline: 2px solid var(--c);
+    outline-offset: 2px;
+  }
+
+  .entry__head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+  }
+
+  /* each game carries its own colour, like a label on a cartridge */
+  .chip {
+    flex: none;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 3px;
+    background: var(--c);
+    transform: rotate(0deg);
+    transition: transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+
+  .entry:hover .chip,
+  .entry:focus-visible .chip { transform: rotate(45deg); }
+
+  .entry__title {
+    margin: 0;
+    color: var(--c);
+    font-size: clamp(1.3rem, 3.4vw, 1.7rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .entry__arrow {
+    font-family: var(--mono);
+    color: var(--c);
+    transform: translateX(-0.25rem);
+    opacity: 0;
+    transition: transform 200ms ease, opacity 160ms ease;
+  }
+
+  .entry:hover .entry__arrow,
+  .entry:focus-visible .entry__arrow {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  .entry__desc {
+    margin: 0.35rem 0 0.7rem 1.3rem;
+    max-width: 36rem;
+    color: var(--ink-soft);
+    font-size: 0.9375rem;
+  }
+
+  /* the real address, treated as content rather than decoration */
+  .entry__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.7rem;
+    margin: 0 0 0 1.3rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--ink-soft);
+  }
+
+  .entry__url {
+    color: var(--ink);
+    border-bottom: 1px solid transparent;
+    transition: border-color 160ms ease;
+  }
+
+  .entry:hover .entry__url,
+  .entry:focus-visible .entry__url { border-bottom-color: var(--c); }
+
+  .sep { color: var(--rule); }
+
+  /* ── Footer ─────────────────────────────────── */
+
+  .foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    margin-top: clamp(3rem, 8vh, 4.5rem);
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--ink-soft);
+  }
+
+  .foot a {
+    text-decoration: none;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 1px;
+  }
+
+  .foot a:hover,
+  .foot a:focus-visible { color: var(--jade); border-bottom-color: var(--jade); }
+
+  /* ── Load sequence ──────────────────────────── */
+
+  .rise {
+    animation: rise 500ms cubic-bezier(0.2, 0.7, 0.3, 1) backwards;
+  }
+
+  .rise:nth-child(1) { animation-delay: 40ms; }
+  .rise:nth-child(2) { animation-delay: 100ms; }
+  .rise:nth-child(3) { animation-delay: 160ms; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(0.5rem); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation: none !important;
+      transition-duration: 1ms !important;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<div class="strip"></div>
+
+<div class="page">
+
+  <!-- ─── EDIT: the heading and the introduction ─── -->
+  <header>
+    <p class="eyebrow rise">Made by me</p>
+    <h1 class="title rise">Games I made</h1>
+    <p class="lede rise">I make games on the computer and put them here so you can play them. You don't need to download anything — just click one and it opens. Some of them are silly. That's on purpose.</p>
+  </header>
+
+  <main>
+
+    <!-- ─── To add a game, copy one <li> block and change
+         the colour, the address, the name and the description.
+         Colours to choose from: --poppy, --marigold, --jade,
+         --cobalt, --violet, --raspberry
+    ─────────────────────────────────────────────────── -->
+    <ul class="stack">
+
+      <li style="--c: var(--poppy)">
+        <a class="entry" href="https://example.com" target="_blank" rel="noopener">
+          <span class="entry__head">
+            <span class="chip" aria-hidden="true"></span>
+            <h2 class="entry__title">Ipsum Lorem</h2>
+            <span class="entry__arrow" aria-hidden="true">&rarr;</span>
+          </span>
+          <p class="entry__desc">Lorem Ipsum</p>
+          <p class="entry__meta">
+            <span class="entry__url">games.marchant.info/lorum_ipsum.html</span>
+            <span class="sep" aria-hidden="true">/</span>
+            <span>2026</span>
+          </p>
+        </a>
+      </li>
+<!--
+      <li style="--c: var(--jade)">
+        <a class="entry" href="https://example.com" target="_blank" rel="noopener">
+          <span class="entry__head">
+            <span class="chip" aria-hidden="true"></span>
+            <h2 class="entry__title">Frog Jump</h2>
+
+            <span class="entry__arrow" aria-hidden="true">&rarr;</span>
+          </span>
+          <p class="entry__desc">Press the space bar to jump over the logs. It gets faster and faster until you lose. My best is 41.</p>
+          <p class="entry__meta">
+            <span class="entry__url">frogjump.io</span>
+            <span class="sep" aria-hidden="true">/</span>
+            <span>2026</span>
+          </p>
+        </a>
+      </li>
+
+      <li style="--c: var(--violet)">
+        <a class="entry" href="https://example.com" target="_blank" rel="noopener">
+          <span class="entry__head">
+            <span class="chip" aria-hidden="true"></span>
+            <h2 class="entry__title">Robot Bakery</h2>
+            <span class="entry__arrow" aria-hidden="true">&rarr;</span>
+          </span>
+          <p class="entry__desc">Tell the robot how to make a cake, one step at a time. If you get the order wrong it makes soup instead.</p>
+          <p class="entry__meta">
+            <span class="entry__url">robotbakery.net</span>
+            <span class="sep" aria-hidden="true">/</span>
+            <span>2025</span>
+          </p>
+        </a>
+      </li>
+-->
+
+    </ul>
+
+  </main>
+
+  <!-- ─── EDIT: your link ─── -->
+  <footer class="foot">
+    <a href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+
+</div>
+</body>
+</html>
