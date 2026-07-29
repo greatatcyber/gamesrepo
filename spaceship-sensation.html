@@ -1,0 +1,3286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SPACESHIP SENSATION &mdash; Orbital Combat</title>
+<style>
+:root{
+  --cy:#6ff2ff; --cy2:#1b7f8c; --mag:#ff5ea8; --amb:#ffb347;
+  --grn:#7dffa8; --red:#ff5b5b; --bg0:#03060e; --bg1:#08111f;
+  --pane:rgba(8,20,34,.82); --line:rgba(111,242,255,.28);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg0);
+  font-family:"Segoe UI",system-ui,-apple-system,sans-serif;color:#cfe9f2;
+  user-select:none;-webkit-user-select:none}
+canvas{display:block;position:absolute;inset:0;width:100%;height:100%}
+#game{z-index:1}
+.mono{font-family:ui-monospace,"SF Mono",Consolas,monospace}
+h1,h2,h3,.ttl{font-family:ui-monospace,Consolas,monospace;letter-spacing:.14em;text-transform:uppercase}
+
+/* ---------- screens ---------- */
+.screen{position:absolute;inset:0;z-index:20;display:none;
+  background:radial-gradient(ellipse at 50% 35%,#0d1e33 0%,#050a14 55%,#02040a 100%);
+  overflow:auto}
+.screen.on{display:block}
+.screen::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(111,242,255,.035) 0 1px,transparent 1px 3px)}
+.wrap{position:relative;max-width:1180px;margin:0 auto;padding:26px 22px 40px}
+
+/* ---------- title ---------- */
+#title .logo{font-family:ui-monospace,Consolas,monospace;font-size:clamp(34px,7.4vw,82px);
+  font-weight:800;letter-spacing:.22em;text-align:center;margin-top:8vh;line-height:1.02;
+  color:#eafcff;text-shadow:0 0 18px rgba(111,242,255,.75),0 0 60px rgba(27,127,140,.7)}
+#title .logo em{display:block;font-style:normal;font-size:.72em;letter-spacing:.3em;
+  color:#9fe9ff;margin-top:8px;text-shadow:0 0 16px rgba(111,242,255,.6)}
+#title .sub{text-align:center;color:#6c94a8;letter-spacing:.42em;font-size:12px;margin-top:10px}
+.menu{max-width:340px;margin:44px auto 0;display:flex;flex-direction:column;gap:12px}
+.tipbar{max-width:640px;margin:34px auto 0;text-align:center;font-size:12px;color:#5f7f92;line-height:1.9}
+
+/* ---------- buttons ---------- */
+.btn{position:relative;display:block;width:100%;padding:13px 18px;cursor:pointer;
+  background:linear-gradient(180deg,rgba(20,48,70,.9),rgba(9,24,38,.9));
+  border:1px solid var(--line);color:#d4f4fb;font:600 13px/1 ui-monospace,Consolas,monospace;
+  letter-spacing:.2em;text-transform:uppercase;text-align:center;
+  transition:.14s;clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.btn:hover{background:linear-gradient(180deg,rgba(38,92,120,.95),rgba(14,44,66,.95));
+  border-color:var(--cy);color:#fff;box-shadow:0 0 22px rgba(111,242,255,.28)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:linear-gradient(180deg,rgba(24,120,132,.95),rgba(10,58,72,.95));
+  border-color:var(--cy);color:#eafeff}
+.btn.primary:hover{background:linear-gradient(180deg,rgba(46,180,190,.95),rgba(16,86,104,.95));
+  box-shadow:0 0 30px rgba(111,242,255,.45)}
+.btn.sm{padding:8px 12px;font-size:11px;letter-spacing:.14em}
+.btn:disabled,.btn.dis{opacity:.4;cursor:not-allowed;filter:grayscale(.6)}
+
+/* ---------- lobby ---------- */
+.topbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+.topbar h2{font-size:20px;color:#eafcff;text-shadow:0 0 14px rgba(111,242,255,.5)}
+.spacer{flex:1}
+.credits{font:700 15px ui-monospace,Consolas,monospace;color:var(--amb);
+  border:1px solid rgba(255,179,71,.4);padding:7px 14px;background:rgba(255,179,71,.08);
+  letter-spacing:.1em}
+.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.tab{padding:9px 20px;cursor:pointer;border:1px solid var(--line);background:rgba(8,22,36,.7);
+  font:600 11px ui-monospace,Consolas,monospace;letter-spacing:.18em;text-transform:uppercase;
+  color:#7fa6b8;transition:.14s}
+.tab:hover{color:#d4f4fb;border-color:var(--cy)}
+.tab.act{background:rgba(27,127,140,.35);color:#eafcff;border-color:var(--cy);
+  box-shadow:inset 0 0 18px rgba(111,242,255,.18)}
+.pane{display:none}.pane.on{display:block}
+
+.layout{display:grid;grid-template-columns:1fr 380px;gap:18px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:12px}
+.card{position:relative;padding:13px;cursor:pointer;background:var(--pane);
+  border:1px solid rgba(111,242,255,.16);transition:.14s;overflow:hidden}
+.card:hover{border-color:var(--cy);transform:translateY(-2px);box-shadow:0 6px 26px rgba(0,0,0,.5)}
+.card.sel{border-color:var(--cy);background:rgba(27,127,140,.28);
+  box-shadow:0 0 0 1px var(--cy),0 0 26px rgba(111,242,255,.24)}
+.card.lock{opacity:.72}
+.card .nm{font:700 13px ui-monospace,Consolas,monospace;letter-spacing:.1em;color:#eafcff;margin-bottom:3px}
+.card .cls{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--cy2);
+  color:#5c93a3;margin-bottom:9px}
+.card .dsc{font-size:11.5px;color:#89a9b8;line-height:1.5;min-height:34px}
+.card .cost{margin-top:9px;font:700 11px ui-monospace,Consolas,monospace;color:var(--amb)}
+.card .own{margin-top:9px;font:700 10px ui-monospace,Consolas,monospace;color:var(--grn);letter-spacing:.14em}
+.card .eq{position:absolute;top:0;right:0;background:var(--cy);color:#04222a;
+  font:700 9px ui-monospace,Consolas,monospace;padding:3px 8px;letter-spacing:.14em}
+.bars{margin-top:10px;display:flex;flex-direction:column;gap:4px}
+.bar{display:flex;align-items:center;gap:7px;font:600 9px ui-monospace,Consolas,monospace;
+  color:#6d90a2;letter-spacing:.1em}
+.bar b{flex:0 0 42px;font-weight:600}
+.bar i{flex:1;height:4px;background:rgba(255,255,255,.09);display:block;position:relative}
+.bar i s{position:absolute;left:0;top:0;bottom:0;background:var(--cy);
+  box-shadow:0 0 8px rgba(111,242,255,.7)}
+
+/* side panel / hangar */
+.side{background:var(--pane);border:1px solid rgba(111,242,255,.18);padding:16px;
+  align-self:start;position:sticky;top:20px}
+#hangar{width:100%;height:230px;display:block;background:
+  radial-gradient(ellipse at 50% 60%,#0e2438,#040a12 70%);border:1px solid rgba(111,242,255,.14);
+  position:relative;inset:auto}
+.side h3{font-size:13px;color:#eafcff;margin:14px 0 8px}
+.kv{display:flex;justify-content:space-between;font:600 11px ui-monospace,Consolas,monospace;
+  padding:5px 0;border-bottom:1px dashed rgba(111,242,255,.13);color:#8fb3c4}
+.kv span:last-child{color:#eafcff}
+.slot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 10px;
+  margin-bottom:7px;background:rgba(6,18,30,.8);border:1px solid rgba(111,242,255,.14)}
+.slot .lb{font:600 9px ui-monospace,Consolas,monospace;letter-spacing:.16em;color:#5c93a3}
+.slot .vl{font:700 12px ui-monospace,Consolas,monospace;color:#eafcff}
+
+/* mode/map picker */
+.mmgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.mm{padding:16px;cursor:pointer;background:var(--pane);border:1px solid rgba(111,242,255,.16);transition:.14s}
+.mm:hover{border-color:var(--cy);transform:translateY(-2px)}
+.mm.sel{border-color:var(--cy);background:rgba(27,127,140,.28);box-shadow:0 0 24px rgba(111,242,255,.2)}
+.mm .nm{font:700 14px ui-monospace,Consolas,monospace;letter-spacing:.12em;color:#eafcff;margin-bottom:6px}
+.mm .dsc{font-size:12px;color:#89a9b8;line-height:1.55}
+.mm .swatch{height:5px;margin-bottom:11px}
+.deploybar{margin-top:22px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+  border-top:1px solid var(--line);padding-top:18px}
+.deploybar .btn{width:auto;padding:15px 44px;font-size:14px}
+.diffsel{display:flex;gap:6px}
+.diffsel .tab{padding:8px 14px}
+
+/* ---------- HUD ---------- */
+#hud{position:absolute;inset:0;z-index:10;pointer-events:none;display:none}
+#hud.on{display:block}
+.hb{position:absolute;font-family:ui-monospace,Consolas,monospace}
+#vitals{left:20px;bottom:20px;width:250px}
+.vrow{margin-bottom:7px}
+.vlab{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.16em;
+  color:#7fa6b8;margin-bottom:3px}
+.vtrack{height:9px;background:rgba(0,0,0,.55);border:1px solid rgba(111,242,255,.28);position:relative;overflow:hidden}
+.vfill{position:absolute;inset:0;width:100%;transform-origin:left;transition:transform .12s}
+#hullF{background:linear-gradient(90deg,#ff7b5b,#ffd27b);box-shadow:0 0 12px rgba(255,140,90,.6)}
+#shldF{background:linear-gradient(90deg,#4fb7ff,#9ff0ff);box-shadow:0 0 12px rgba(111,242,255,.6)}
+#boostF{background:linear-gradient(90deg,#7dffa8,#e6ff8a);box-shadow:0 0 12px rgba(125,255,168,.5)}
+#weps{right:20px;bottom:20px;width:250px;text-align:right}
+.wrow{margin-bottom:9px;background:rgba(4,14,24,.6);border:1px solid rgba(111,242,255,.2);padding:8px 11px}
+.wnm{font-size:11px;letter-spacing:.14em;color:#eafcff;display:flex;justify-content:space-between}
+.wnm em{font-style:normal;color:#5c93a3;font-size:9px}
+.wtrack{height:4px;background:rgba(0,0,0,.5);margin-top:6px;position:relative;overflow:hidden}
+.wfill{position:absolute;inset:0;background:var(--cy);transform-origin:left;
+  box-shadow:0 0 8px rgba(111,242,255,.7)}
+.wammo{font-size:10px;color:#ffb347;margin-top:4px;letter-spacing:.12em}
+#objective{left:50%;top:16px;transform:translateX(-50%);text-align:center;min-width:420px}
+#objTitle{font-size:11px;letter-spacing:.3em;color:#6c94a8}
+#scoreRow{display:flex;justify-content:center;align-items:center;gap:18px;margin-top:6px;font-size:20px}
+#scoreRow .ally{color:var(--cy);text-shadow:0 0 12px rgba(111,242,255,.6)}
+#scoreRow .foe{color:var(--red);text-shadow:0 0 12px rgba(255,91,91,.6)}
+#scoreRow .vs{font-size:11px;color:#4d6879;letter-spacing:.2em}
+#objSub{font-size:11px;color:#8fb3c4;margin-top:5px;letter-spacing:.1em}
+#radar{right:20px;top:20px;width:150px;height:150px}
+#radarC{position:relative;inset:auto;width:150px;height:150px}
+#tgtinfo{left:20px;top:20px;width:230px;background:rgba(4,14,24,.6);
+  border:1px solid rgba(255,91,91,.34);padding:10px 12px;display:none}
+#tgtinfo .tn{font-size:12px;letter-spacing:.14em;color:#ffd2d2}
+#tgtinfo .td{font-size:10px;color:#9d7b7b;letter-spacing:.12em;margin-top:2px}
+#killfeed{right:20px;top:190px;width:250px;text-align:right;font-size:11px;line-height:1.9}
+.kf{opacity:.95}
+#msgbig{left:50%;top:38%;transform:translate(-50%,-50%);text-align:center;
+  font-size:34px;letter-spacing:.2em;color:#fff;text-shadow:0 0 24px rgba(111,242,255,.8);
+  opacity:0;transition:opacity .3s}
+#msgsub{left:50%;top:calc(38% + 34px);transform:translate(-50%,-50%);text-align:center;
+  font-size:13px;letter-spacing:.24em;color:#8fb3c4;opacity:0;transition:opacity .3s}
+#speedo{left:50%;bottom:22px;transform:translateX(-50%);text-align:center;font-size:11px;
+  letter-spacing:.2em;color:#6c94a8}
+#speedo b{color:#eafcff;font-size:16px}
+#dmgv{position:absolute;inset:0;pointer-events:none;opacity:0;
+  box-shadow:inset 0 0 180px rgba(255,40,40,.85);transition:opacity .35s}
+#overheat{left:50%;bottom:60px;transform:translateX(-50%);color:var(--red);font-size:12px;
+  letter-spacing:.24em;opacity:0;transition:opacity .2s}
+
+/* pause + results */
+.modal{position:absolute;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
+  background:rgba(2,6,14,.86);backdrop-filter:blur(3px)}
+.modal.on{display:flex}
+.mbox{width:min(560px,92vw);background:var(--pane);border:1px solid var(--cy);padding:30px;
+  box-shadow:0 0 60px rgba(111,242,255,.22)}
+.mbox h2{font-size:24px;text-align:center;color:#eafcff;margin-bottom:6px}
+.mbox .msub{text-align:center;font-size:11px;letter-spacing:.28em;color:#6c94a8;margin-bottom:22px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:22px}
+.stat{background:rgba(4,14,24,.7);border:1px solid rgba(111,242,255,.16);padding:11px 13px}
+.stat b{display:block;font:700 20px ui-monospace,Consolas,monospace;color:#eafcff}
+.stat span{font-size:9px;letter-spacing:.2em;color:#6c94a8;text-transform:uppercase}
+.payout{text-align:center;font:700 17px ui-monospace,Consolas,monospace;color:var(--amb);
+  margin-bottom:20px;letter-spacing:.1em}
+.mrow{display:flex;gap:10px}
+.mrow .btn{flex:1}
+#loading{position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;
+  background:#02040a;color:var(--cy);font:600 13px ui-monospace,Consolas,monospace;letter-spacing:.3em}
+#loading.on{display:flex}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- ============ HUD ============ -->
+<div id="hud">
+  <div id="dmgv"></div>
+  <div class="hb" id="objective">
+    <div id="objTitle">TEAM DEATHMATCH</div>
+    <div id="scoreRow"><span class="ally" id="scA">0</span><span class="vs">VS</span><span class="foe" id="scB">0</span></div>
+    <div id="objSub">&nbsp;</div>
+  </div>
+  <div class="hb" id="tgtinfo">
+    <div class="tn" id="tgtName">—</div>
+    <div class="td" id="tgtDist">—</div>
+    <div class="vtrack" style="margin-top:8px"><div class="vfill" id="tgtHullF" style="background:linear-gradient(90deg,#ff5b5b,#ff9f7b)"></div></div>
+  </div>
+  <div class="hb" id="radar"><canvas id="radarC" width="300" height="300"></canvas></div>
+  <div class="hb" id="killfeed"></div>
+  <div class="hb" id="vitals">
+    <div class="vrow"><div class="vlab"><span>HULL</span><span id="hullN">100</span></div>
+      <div class="vtrack"><div class="vfill" id="hullF"></div></div></div>
+    <div class="vrow"><div class="vlab"><span>SHIELD</span><span id="shldN">100</span></div>
+      <div class="vtrack"><div class="vfill" id="shldF"></div></div></div>
+    <div class="vrow"><div class="vlab"><span>BOOST</span><span id="boostN">100</span></div>
+      <div class="vtrack"><div class="vfill" id="boostF"></div></div></div>
+  </div>
+  <div class="hb" id="weps">
+    <div class="wrow"><div class="wnm"><span id="w1n">PULSE LASER</span><em>LMB</em></div>
+      <div class="wtrack"><div class="wfill" id="w1f"></div></div>
+      <div class="wammo" id="w1a">HEAT 0%</div></div>
+    <div class="wrow"><div class="wnm"><span id="w2n">MISSILES</span><em>RMB / SPACE</em></div>
+      <div class="wtrack"><div class="wfill" id="w2f"></div></div>
+      <div class="wammo" id="w2a">x8</div></div>
+  </div>
+  <div class="hb" id="speedo"><b id="spdN">0</b> M/S</div>
+  <div class="hb" id="overheat">— WEAPON OVERHEAT —</div>
+  <div class="hb" id="msgbig"></div>
+  <div class="hb" id="msgsub"></div>
+</div>
+
+<!-- ============ TITLE ============ -->
+<div class="screen on" id="title">
+  <div class="wrap">
+    <div class="logo">SPACESHIP<em>SENSATION</em></div>
+    <div class="sub">ORBITAL COMBAT WING &mdash; 2387</div>
+    <div class="menu">
+      <button class="btn primary" data-go="lobby">Enter Hangar</button>
+      <button class="btn" data-go="brief">Flight Manual</button>
+      <button class="btn" id="wipeBtn">Reset Progress</button>
+    </div>
+    <div class="tipbar">
+      Fly with the mouse &middot; <b>W/S</b> throttle &middot; <b>A/D</b> roll &middot; <b>SHIFT</b> afterburner<br>
+      <b>LMB</b> primary &middot; <b>RMB</b>/<b>SPACE</b> secondary &middot; <b>TAB</b> cycle target &middot; <b>ESC</b> pause<br>
+      <b>F</b> fire control &mdash; guns auto-aim once locked, but run hot
+    </div>
+  </div>
+</div>
+
+<!-- ============ BRIEFING ============ -->
+<div class="screen" id="brief">
+  <div class="wrap">
+    <div class="topbar"><h2>Flight Manual</h2><div class="spacer"></div>
+      <button class="btn sm" data-go="title" style="width:auto">&larr; Back</button></div>
+    <div class="layout">
+      <div>
+        <div class="side" style="position:static">
+          <h3 style="margin-top:0">Controls</h3>
+          <div class="kv"><span>Steer (pitch / yaw)</span><span>MOUSE</span></div>
+          <div class="kv"><span>Throttle up / down</span><span>W / S</span></div>
+          <div class="kv"><span>Roll left / right</span><span>A / D</span></div>
+          <div class="kv"><span>Afterburner</span><span>SHIFT</span></div>
+          <div class="kv"><span>Fire primary</span><span>LEFT MOUSE</span></div>
+          <div class="kv"><span>Fire secondary</span><span>RIGHT MOUSE / SPACE</span></div>
+          <div class="kv"><span>Cycle target</span><span>TAB or Q</span></div>
+          <div class="kv"><span>Nearest threat</span><span>E</span></div>
+          <div class="kv"><span>Toggle flight assist</span><span>X</span></div>
+          <div class="kv"><span>Toggle fire control</span><span>F</span></div>
+          <div class="kv"><span>Pause</span><span>ESC</span></div>
+          <h3>Combat Doctrine</h3>
+          <div class="kv"><span>Shields</span><span>Regenerate after 4s</span></div>
+          <div class="kv"><span>Hull</span><span>Does not regenerate</span></div>
+          <div class="kv"><span>Lead reticle</span><span>Hollow ring = aim here</span></div>
+          <div class="kv"><span>Missile lock</span><span>Hold target in cone</span></div>
+          <div class="kv"><span>Heat</span><span>Overheat locks primary</span></div>
+          <h3>Fire Control System</h3>
+          <div class="kv"><span>Acquisition</span><span>0.75s in cone, under 1000m</span></div>
+          <div class="kv"><span>Gun traverse</span><span>±10° from the nose</span></div>
+          <div class="kv"><span>Heat penalty</span><span>×1.5 idle to ×2.7 at full slew</span></div>
+          <div class="kv"><span>Sustained fire</span><span>~7s manual, ~3s locked</span></div>
+          <div class="kv"><span>Enemy bars</span><span>Cyan shield over red hull</span></div>
+          <div class="kv"><span>Sight colour</span><span>Green = guns on solution</span></div>
+        </div>
+      </div>
+      <div class="side" style="position:static">
+        <h3 style="margin-top:0">Tips</h3>
+        <p style="font-size:12.5px;line-height:1.75;color:#8fb3c4">
+        Cut throttle in a turn &mdash; your ship rotates faster than it translates, so slowing down
+        tightens your turn circle dramatically.<br><br>
+        The hollow lead ring shows where to shoot a moving target. Put your crosshair on the ring, not on the ship.<br><br>
+        Hold a target in the forward cone and the fire control system spins up. Once it locks, your guns traverse
+        onto the firing solution on their own &mdash; the crosshair goes green and drifts off the nose to show where
+        they are really pointing. It costs you heat, in proportion to how far the guns have to slew &mdash; a hard
+        crossing shot runs at nearly triple rate and will cook your barrels in about three seconds, while a target
+        already on your nose barely costs anything. Tap the trigger, or press <b>F</b> to fly it manual.<br><br>
+        Every enemy carries a floating bar: the thin cyan strip is shields, the bar under it is hull. Shields come
+        back, hull does not &mdash; so pick the target that is already bleeding.<br><br>
+        Missiles need about a second of lock. The lock indicator turns solid when they will track.<br><br>
+        Shields absorb damage first and come back after four quiet seconds. Break contact, regenerate, re-engage.<br><br>
+        Credits are paid for kills, objectives and victory. Win bonus is large &mdash; play the objective.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LOBBY ============ -->
+<div class="screen" id="lobby">
+  <div class="wrap">
+    <div class="topbar">
+      <h2>Hangar Bay 07</h2>
+      <div class="spacer"></div>
+      <div class="credits mono">⬢ <span id="credN">0</span> CR</div>
+      <button class="btn sm" data-go="title" style="width:auto">&larr; Menu</button>
+    </div>
+    <div class="tabs">
+      <div class="tab act" data-tab="ships">Ships</div>
+      <div class="tab" data-tab="prim">Primary</div>
+      <div class="tab" data-tab="sec">Secondary</div>
+      <div class="tab" data-tab="mod">Modules</div>
+      <div class="tab" data-tab="deploy">Deploy</div>
+    </div>
+    <div class="layout">
+      <div>
+        <div class="pane on" id="pane-ships"><div class="cards" id="shipCards"></div></div>
+        <div class="pane" id="pane-prim"><div class="cards" id="primCards"></div></div>
+        <div class="pane" id="pane-sec"><div class="cards" id="secCards"></div></div>
+        <div class="pane" id="pane-mod"><div class="cards" id="modCards"></div></div>
+        <div class="pane" id="pane-deploy">
+          <h3 style="font-size:13px;color:#eafcff;margin-bottom:10px">Game Mode</h3>
+          <div class="mmgrid" id="modeCards"></div>
+          <h3 style="font-size:13px;color:#eafcff;margin:22px 0 10px">Battle Zone</h3>
+          <div class="mmgrid" id="mapCards"></div>
+          <h3 style="font-size:13px;color:#eafcff;margin:22px 0 10px">Difficulty</h3>
+          <div class="diffsel" id="diffSel"></div>
+          <div class="deploybar">
+            <button class="btn primary" id="launchBtn">Launch Mission</button>
+            <div style="font-size:11.5px;color:#7fa6b8;line-height:1.6" id="launchInfo"></div>
+          </div>
+        </div>
+      </div>
+      <div class="side">
+        <canvas id="hangar" width="740" height="460"></canvas>
+        <h3 id="hgName" style="margin-top:12px">—</h3>
+        <div style="font-size:11px;color:#5c93a3;letter-spacing:.16em;margin:-4px 0 10px" id="hgClass">—</div>
+        <div id="hgStats"></div>
+        <h3>Loadout</h3>
+        <div class="slot"><div><div class="lb">HULL</div><div class="vl" id="slShip">—</div></div></div>
+        <div class="slot"><div><div class="lb">PRIMARY</div><div class="vl" id="slPrim">—</div></div></div>
+        <div class="slot"><div><div class="lb">SECONDARY</div><div class="vl" id="slSec">—</div></div></div>
+        <div class="slot"><div><div class="lb">MODULE</div><div class="vl" id="slMod">—</div></div></div>
+        <button class="btn primary" id="launchBtn2" style="margin-top:12px">Launch Mission</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODALS ============ -->
+<div class="modal" id="pauseM"><div class="mbox">
+  <h2>Paused</h2><div class="msub">Systems Holding</div>
+  <div class="mrow" style="flex-direction:column;gap:10px">
+    <button class="btn primary" id="resumeBtn">Resume</button>
+    <button class="btn" id="abortBtn">Abort to Hangar</button>
+  </div></div></div>
+
+<div class="modal" id="resultM"><div class="mbox">
+  <h2 id="resTitle">Victory</h2><div class="msub" id="resSub">Mission Complete</div>
+  <div class="stats" id="resStats"></div>
+  <div class="payout" id="resPay">+0 CR</div>
+  <div class="mrow">
+    <button class="btn primary" id="againBtn">Fly Again</button>
+    <button class="btn" id="toLobbyBtn">Hangar</button>
+  </div></div></div>
+
+<div id="loading">INITIALISING&nbsp;&nbsp;FLIGHT&nbsp;&nbsp;SYSTEMS…</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   SPACESHIP SENSATION — 1. MATH
+   Vectors are plain {x,y,z}. Orientation is a quaternion {x,y,z,w}.
+   Model space convention: +Z = forward (nose), +Y = up, +X = right.
+   ========================================================================= */
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp  = (a, b, t) => a + (b - a) * t;
+const rnd   = (a, b) => a + Math.random() * (b - a);
+const rndi  = (a, b) => Math.floor(rnd(a, b + 1));
+const pick  = a => a[(Math.random() * a.length) | 0];
+const sign  = v => v < 0 ? -1 : 1;
+// approach `a` toward `b` at most `d`
+const toward = (a, b, d) => Math.abs(b - a) <= d ? b : a + sign(b - a) * d;
+
+function V(x = 0, y = 0, z = 0) { return { x, y, z }; }
+const vadd  = (a, b) => ({ x: a.x + b.x, y: a.y + b.y, z: a.z + b.z });
+const vsub  = (a, b) => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
+const vmul  = (a, s) => ({ x: a.x * s, y: a.y * s, z: a.z * s });
+const vdot  = (a, b) => a.x * b.x + a.y * b.y + a.z * b.z;
+const vcross= (a, b) => ({ x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x });
+const vlen2 = a => a.x * a.x + a.y * a.y + a.z * a.z;
+const vlen  = a => Math.sqrt(vlen2(a));
+const vdist = (a, b) => vlen(vsub(a, b));
+const vdist2= (a, b) => vlen2(vsub(a, b));
+const vcopy = a => ({ x: a.x, y: a.y, z: a.z });
+const vlerp = (a, b, t) => ({ x: lerp(a.x,b.x,t), y: lerp(a.y,b.y,t), z: lerp(a.z,b.z,t) });
+function vnorm(a) { const l = vlen(a); return l > 1e-9 ? { x: a.x/l, y: a.y/l, z: a.z/l } : V(0,0,1); }
+function vaddi(a, b, s) { a.x += b.x * s; a.y += b.y * s; a.z += b.z * s; return a; }
+function vclampLen(a, max) { const l = vlen(a); return l > max ? vmul(a, max / l) : a; }
+function vrandUnit() {
+  const z = rnd(-1, 1), t = rnd(0, TAU), r = Math.sqrt(1 - z * z);
+  return { x: r * Math.cos(t), y: r * Math.sin(t), z };
+}
+function vrandSphere(rad) { return vmul(vrandUnit(), rad * Math.cbrt(Math.random())); }
+
+/* ---- quaternions ---- */
+function Q(x = 0, y = 0, z = 0, w = 1) { return { x, y, z, w }; }
+function qmul(a, b) {
+  return {
+    x: a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y,
+    y: a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x,
+    z: a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w,
+    w: a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z
+  };
+}
+function qnorm(q) {
+  const l = Math.hypot(q.x, q.y, q.z, q.w) || 1;
+  return { x: q.x/l, y: q.y/l, z: q.z/l, w: q.w/l };
+}
+function qconj(q) { return { x: -q.x, y: -q.y, z: -q.z, w: q.w }; }
+function qaxis(ax, ang) {
+  const h = ang * 0.5, s = Math.sin(h);
+  return { x: ax.x*s, y: ax.y*s, z: ax.z*s, w: Math.cos(h) };
+}
+/* rotate vector v by quaternion q */
+function qrot(q, v) {
+  const tx = 2*(q.y*v.z - q.z*v.y), ty = 2*(q.z*v.x - q.x*v.z), tz = 2*(q.x*v.y - q.y*v.x);
+  return {
+    x: v.x + q.w*tx + q.y*tz - q.z*ty,
+    y: v.y + q.w*ty + q.z*tx - q.x*tz,
+    z: v.z + q.w*tz + q.x*ty - q.y*tx
+  };
+}
+/* inverse-rotate: world vector -> local space of q */
+function qinvrot(q, v) { return qrot(qconj(q), v); }
+const qfwd   = q => qrot(q, V(0, 0, 1));
+const qup    = q => qrot(q, V(0, 1, 0));
+const qright = q => qrot(q, V(1, 0, 0));
+function qslerp(a, b, t) {
+  let d = a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
+  let bb = b;
+  if (d < 0) { d = -d; bb = { x:-b.x, y:-b.y, z:-b.z, w:-b.w }; }
+  if (d > 0.9995) return qnorm({ x:lerp(a.x,bb.x,t), y:lerp(a.y,bb.y,t), z:lerp(a.z,bb.z,t), w:lerp(a.w,bb.w,t) });
+  const th = Math.acos(d), s = Math.sin(th);
+  const w1 = Math.sin((1 - t) * th) / s, w2 = Math.sin(t * th) / s;
+  return qnorm({ x:a.x*w1+bb.x*w2, y:a.y*w1+bb.y*w2, z:a.z*w1+bb.z*w2, w:a.w*w1+bb.w*w2 });
+}
+/* quaternion that points +Z along `fwd`, with `up` as reference */
+function qLookAt(fwd, upRef) {
+  const f = vnorm(fwd);
+  let u = upRef || V(0, 1, 0);
+  if (Math.abs(vdot(f, u)) > 0.999) u = V(0, 0, 1);
+  const r = vnorm(vcross(u, f));
+  const uu = vcross(f, r);
+  // rotation matrix columns r, uu, f -> quaternion
+  const m00=r.x,m01=uu.x,m02=f.x, m10=r.y,m11=uu.y,m12=f.y, m20=r.z,m21=uu.z,m22=f.z;
+  const tr = m00 + m11 + m22;
+  let q;
+  if (tr > 0) { const s = Math.sqrt(tr + 1) * 2;
+    q = Q((m21-m12)/s, (m02-m20)/s, (m10-m01)/s, 0.25*s); }
+  else if (m00 > m11 && m00 > m22) { const s = Math.sqrt(1+m00-m11-m22)*2;
+    q = Q(0.25*s, (m01+m10)/s, (m02+m20)/s, (m21-m12)/s); }
+  else if (m11 > m22) { const s = Math.sqrt(1+m11-m00-m22)*2;
+    q = Q((m01+m10)/s, 0.25*s, (m12+m21)/s, (m02-m20)/s); }
+  else { const s = Math.sqrt(1+m22-m00-m11)*2;
+    q = Q((m02+m20)/s, (m12+m21)/s, 0.25*s, (m10-m01)/s); }
+  return qnorm(q);
+}
+/* smallest rotation turning quaternion q's forward toward target dir */
+function qTurnToward(q, targetDir, maxRad, upRef) {
+  const goal = qLookAt(targetDir, upRef || qup(q));
+  let d = q.x*goal.x + q.y*goal.y + q.z*goal.z + q.w*goal.w;
+  d = clamp(Math.abs(d), -1, 1);
+  const ang = 2 * Math.acos(d);
+  if (ang < 1e-4) return q;
+  return qslerp(q, goal, clamp(maxRad / ang, 0, 1));
+}
+
+/* ---- misc ---- */
+function seededRand(seed) {           // deterministic PRNG for map generation
+  let s = seed >>> 0 || 1;
+  return function () {
+    s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0;
+    return s / 4294967296;
+  };
+}
+function hexToRgb(h) {
+  const n = parseInt(h.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function rgbStr(r, g, b) { return 'rgb(' + (r|0) + ',' + (g|0) + ',' + (b|0) + ')'; }
+/* blend a colour toward fog colour by t */
+function fogMix(rgb, fog, t) {
+  return rgbStr(lerp(rgb[0], fog[0], t), lerp(rgb[1], fog[1], t), lerp(rgb[2], fog[2], t));
+}
+/* solve intercept time for a projectile of speed `spd` fired from `from`
+   at a target at `tp` moving with velocity `tv`. Returns aim point or null. */
+function leadPoint(from, tp, tv, spd) {
+  const d = vsub(tp, from);
+  const a = vlen2(tv) - spd * spd;
+  const b = 2 * vdot(d, tv);
+  const c = vlen2(d);
+  let t;
+  if (Math.abs(a) < 1e-4) { t = -c / (b || 1e-4); }
+  else {
+    const disc = b * b - 4 * a * c;
+    if (disc < 0) return null;
+    const sq = Math.sqrt(disc);
+    const t1 = (-b + sq) / (2 * a), t2 = (-b - sq) / (2 * a);
+    t = Math.min(t1 > 0 ? t1 : 1e9, t2 > 0 ? t2 : 1e9);
+    if (t >= 1e9) return null;
+  }
+  if (t < 0 || t > 12) return null;
+  return vadd(tp, vmul(tv, t));
+}
+/* =========================================================================
+   SPACESHIP SENSATION — 2. MESH CONSTRUCTION
+   A mesh = { v:[verts], f:[{i:[idx...], c:[r,g,b], gl:bool}], eng:[{p,r,c}],
+              gun:[pos], r:boundingRadius }
+   ========================================================================= */
+function newMesh() { return { v: [], f: [], eng: [], gun: [], r: 1 }; }
+
+function meshRadius(m) {
+  let r = 0;
+  for (const p of m.v) r = Math.max(r, vlen(p));
+  m.r = r || 1;
+  return m.r;
+}
+function addV(m, x, y, z) { m.v.push(V(x, y, z)); return m.v.length - 1; }
+function addF(m, idx, c, gl) { m.f.push({ i: idx, c: c, gl: !!gl }); }
+
+/* axis-aligned box centred at c with half-sizes s */
+function addBox(m, cx, cy, cz, sx, sy, sz, c, top) {
+  const b = m.v.length;
+  addV(m, cx-sx, cy-sy, cz-sz); addV(m, cx+sx, cy-sy, cz-sz);
+  addV(m, cx+sx, cy+sy, cz-sz); addV(m, cx-sx, cy+sy, cz-sz);
+  addV(m, cx-sx, cy-sy, cz+sz); addV(m, cx+sx, cy-sy, cz+sz);
+  addV(m, cx+sx, cy+sy, cz+sz); addV(m, cx-sx, cy+sy, cz+sz);
+  const t = top || c;
+  addF(m, [b+0,b+3,b+2,b+1], c);      // back  (-z)
+  addF(m, [b+4,b+5,b+6,b+7], c);      // front (+z)
+  addF(m, [b+0,b+4,b+7,b+3], c);      // left
+  addF(m, [b+1,b+2,b+6,b+5], c);      // right
+  addF(m, [b+3,b+7,b+6,b+2], t);      // top
+  addF(m, [b+0,b+1,b+5,b+4], c);      // bottom
+  return b;
+}
+
+/* ---------------------------------------------------------------
+   Parametric strike-craft hull.  +Z is the nose.
+   --------------------------------------------------------------- */
+function mkFighter(p) {
+  const m = newMesh();
+  const L = p.len, T = p.tail, W = p.bodyW, H = p.bodyH;
+  const S = p.span, SW = p.sweep, WY = p.wingY || 0;
+  const A = p.hull, B = p.hull2, C = p.trim, G = p.glass;
+
+  const nose = addV(m, 0, H*0.05, L);
+  const tF = addV(m, 0,  H,        L*0.15);
+  const bF = addV(m, 0, -H*0.75,   L*0.15);
+  const lF = addV(m, -W, 0,        L*0.20);
+  const rF = addV(m,  W, 0,        L*0.20);
+  const tB = addV(m, 0,  H*0.78,  -T);
+  const bB = addV(m, 0, -H*0.55,  -T);
+  const lB = addV(m, -W*0.78, 0,  -T);
+  const rB = addV(m,  W*0.78, 0,  -T);
+
+  // forward cone
+  addF(m, [nose, tF, lF], A); addF(m, [nose, rF, tF], A);
+  addF(m, [nose, lF, bF], B); addF(m, [nose, bF, rF], B);
+  // mid body
+  addF(m, [lF, tF, tB, lB], A); addF(m, [tF, rF, rB, tB], A);
+  addF(m, [bF, lF, lB, bB], B); addF(m, [rF, bF, bB, rB], B);
+  // tail cap
+  addF(m, [lB, tB, rB, bB], C);
+
+  // canopy
+  if (p.canopy !== false) {
+    const c1 = addV(m, -W*0.34, H*0.62, L*0.44);
+    const c2 = addV(m,  W*0.34, H*0.62, L*0.44);
+    const c3 = addV(m,  W*0.28, H*0.90, L*0.02);
+    const c4 = addV(m, -W*0.28, H*0.90, L*0.02);
+    addF(m, [c1, c2, c3, c4], G);
+  }
+
+  // wings (double-sided flat panels)
+  for (const s of [-1, 1]) {
+    const w0 = addV(m, s*W*0.86, 0,        L*0.16);
+    const w1 = addV(m, s*S,      WY,      -SW);
+    const w2 = addV(m, s*S*0.72, WY*0.8,  -T*1.02);
+    const w3 = addV(m, s*W*0.80, 0,       -T*0.98);
+    addF(m, s > 0 ? [w0,w1,w2,w3] : [w3,w2,w1,w0], A);
+    // wing stripe
+    const k0 = addV(m, s*(W*0.86+ (S-W*0.86)*0.44), WY*0.44, L*0.16 - (L*0.16+SW)*0.44 + 0.06);
+    const k1 = addV(m, s*(W*0.86+ (S-W*0.86)*0.62), WY*0.62, L*0.16 - (L*0.16+SW)*0.62 + 0.06);
+    const k2 = addV(m, s*(W*0.80+ (S*0.72-W*0.80)*0.62), WY*0.5, -T*0.6);
+    const k3 = addV(m, s*(W*0.80+ (S*0.72-W*0.80)*0.44), WY*0.36, -T*0.55);
+    addF(m, s > 0 ? [k0,k1,k2,k3] : [k3,k2,k1,k0], C);
+    // wingtip pod / gun
+    if (p.pods) {
+      addBox(m, s*S*0.9, WY, -SW*0.5, W*0.16, W*0.16, L*0.30, C);
+      m.gun.push(V(s*S*0.9, WY, -SW*0.5 + L*0.32));
+    } else {
+      m.gun.push(V(s*W*1.05, -H*0.2, L*0.6));
+    }
+  }
+
+  // vertical fin(s)
+  if (p.fin) {
+    for (const s of (p.twinFin ? [-1, 1] : [0])) {
+      const off = p.twinFin ? s * W * 0.7 : 0;
+      const f0 = addV(m, off, H*0.7,          -T*0.35);
+      const f1 = addV(m, off, H*0.7 + p.fin,  -T*0.80);
+      const f2 = addV(m, off, H*0.7 + p.fin*0.9, -T);
+      const f3 = addV(m, off, H*0.7,          -T);
+      addF(m, [f0,f1,f2,f3], B); addF(m, [f3,f2,f1,f0], B);
+    }
+  }
+  // belly strake
+  if (p.strake) {
+    const s0 = addV(m, 0, -H*0.75, L*0.1);
+    const s1 = addV(m, 0, -H*0.75 - p.strake, -T*0.55);
+    const s2 = addV(m, 0, -H*0.55, -T);
+    addF(m, [s0,s1,s2], B); addF(m, [s2,s1,s0], B);
+  }
+
+  // engines
+  const nE = p.engines || 2;
+  for (let i = 0; i < nE; i++) {
+    const x = nE === 1 ? 0 : (-1 + 2 * i / (nE - 1)) * W * 0.62;
+    addBox(m, x, 0, -T - L*0.05, W*0.25, H*0.34, L*0.10, C);
+    m.eng.push({ p: V(x, 0, -T - L*0.16), r: p.engR || W*0.34, c: p.engC || [130, 225, 255] });
+  }
+  meshRadius(m);
+  return m;
+}
+
+/* ---------------------------------------------------------------
+   Capital ship / boss — built from blocks with turret bulges
+   --------------------------------------------------------------- */
+function mkCapital(p) {
+  const m = newMesh();
+  const A = p.hull, B = p.hull2, C = p.trim, G = p.glass;
+  const L = p.len, W = p.wide, H = p.high;
+
+  addBox(m, 0, 0, 0, W, H, L, A, B);                       // main spine
+  addBox(m, 0, H*0.9, -L*0.35, W*0.55, H*0.55, L*0.28, B); // superstructure
+  addBox(m, 0, H*1.35, -L*0.35, W*0.28, H*0.30, L*0.16, G);// bridge
+  addBox(m, 0, -H*0.6, L*0.25, W*0.5, H*0.34, L*0.42, B);  // ventral prow
+  // prow wedge
+  const n = addV(m, 0, 0, L*1.55);
+  const a1 = addV(m, -W, H, L), a2 = addV(m, W, H, L);
+  const a3 = addV(m, W, -H, L), a4 = addV(m, -W, -H, L);
+  addF(m, [n, a1, a2], A); addF(m, [n, a2, a3], B);
+  addF(m, [n, a3, a4], A); addF(m, [n, a4, a1], B);
+  // side sponsons + turrets
+  for (const s of [-1, 1]) {
+    addBox(m, s*W*1.25, 0, -L*0.1, W*0.30, H*0.42, L*0.55, B);
+    for (let i = 0; i < (p.turrets || 3); i++) {
+      const z = lerp(L*0.55, -L*0.55, i / Math.max(1, (p.turrets||3) - 1));
+      addBox(m, s*W*1.05, H*0.75, z, W*0.20, H*0.24, W*0.20, C);
+      m.gun.push(V(s*W*1.05, H*1.0, z));
+    }
+  }
+  // hangar stripes
+  for (let i = 0; i < 5; i++) {
+    const z = lerp(L*0.7, -L*0.7, i / 4);
+    addBox(m, 0, H*1.002, z, W*0.7, H*0.02, L*0.045, C);
+  }
+  // engines
+  const nE = p.engines || 4;
+  for (let i = 0; i < nE; i++) {
+    const x = (nE === 1 ? 0 : (-1 + 2*i/(nE-1))) * W * 0.7;
+    addBox(m, x, 0, -L*1.05, W*0.18, H*0.5, L*0.08, C);
+    m.eng.push({ p: V(x, 0, -L*1.16), r: W*0.30, c: p.engC || [255, 150, 90] });
+  }
+  meshRadius(m);
+  return m;
+}
+
+/* ---------------------------------------------------------------
+   Subdivided-octahedron rock
+   --------------------------------------------------------------- */
+function mkRock(seed, sub, jag, pal) {
+  const rr = seededRand(seed);
+  let verts = [V(1,0,0), V(-1,0,0), V(0,1,0), V(0,-1,0), V(0,0,1), V(0,0,-1)];
+  let tris = [[0,2,4],[2,1,4],[1,3,4],[3,0,4],[2,0,5],[1,2,5],[3,1,5],[0,3,5]];
+  for (let s = 0; s < (sub || 1); s++) {
+    const cache = {}, out = [];
+    const mid = (a, b) => {
+      const k = a < b ? a + '_' + b : b + '_' + a;
+      if (cache[k] !== undefined) return cache[k];
+      const p = vnorm(vmul(vadd(verts[a], verts[b]), 0.5));
+      verts.push(p); return (cache[k] = verts.length - 1);
+    };
+    for (const t of tris) {
+      const a = mid(t[0], t[1]), b = mid(t[1], t[2]), c = mid(t[2], t[0]);
+      out.push([t[0],a,c],[a,t[1],b],[c,b,t[2]],[a,b,c]);
+    }
+    tris = out;
+  }
+  const m = newMesh();
+  for (const p of verts) {
+    const k = 1 + (rr() - 0.5) * (jag || 0.55);
+    m.v.push(vmul(p, k));
+  }
+  for (const t of tris) {
+    const g = 0.62 + rr() * 0.38;
+    m.f.push({ i: t, c: [pal[0]*g, pal[1]*g, pal[2]*g], gl: false });
+  }
+  meshRadius(m);
+  return m;
+}
+
+/* ---------------------------------------------------------------
+   Wreck — cluster of broken boxes and spars
+   --------------------------------------------------------------- */
+function mkWreck(seed, pal) {
+  const rr = seededRand(seed);
+  const m = newMesh();
+  const A = pal, B = [pal[0]*0.62, pal[1]*0.62, pal[2]*0.66];
+  addBox(m, 0, 0, 0, 1 + rr(), 0.7 + rr()*0.5, 3 + rr()*3, A, B);
+  const n = 3 + (rr() * 4 | 0);
+  for (let i = 0; i < n; i++) {
+    addBox(m,
+      (rr()-0.5)*3.4, (rr()-0.5)*2.4, (rr()-0.5)*7,
+      0.3 + rr()*1.1, 0.3 + rr()*1.0, 0.4 + rr()*2.2,
+      rr() > 0.5 ? A : B);
+  }
+  for (let i = 0; i < 3; i++) {           // exposed spars
+    const s = rr() > 0.5 ? 1 : -1;
+    addBox(m, s*(1 + rr()*2), (rr()-0.5)*1.6, (rr()-0.5)*5, 0.9 + rr(), 0.1, 0.1, B);
+  }
+  meshRadius(m);
+  return m;
+}
+
+/* ---------------------------------------------------------------
+   Beacon / capture node — octahedron core inside a torus of struts
+   --------------------------------------------------------------- */
+function mkBeacon(col) {
+  const m = newMesh();
+  const c = col, d = [c[0]*0.5, c[1]*0.5, c[2]*0.55];
+  const t = addV(m, 0, 2.4, 0), b = addV(m, 0, -2.4, 0);
+  const ring = [];
+  for (let i = 0; i < 6; i++) {
+    const a = i / 6 * TAU;
+    ring.push(addV(m, Math.cos(a) * 1.6, 0, Math.sin(a) * 1.6));
+  }
+  for (let i = 0; i < 6; i++) {
+    const j = (i + 1) % 6;
+    addF(m, [t, ring[i], ring[j]], c, true);
+    addF(m, [b, ring[j], ring[i]], d, true);
+  }
+  for (let i = 0; i < 8; i++) {          // outer cage
+    const a = i / 8 * TAU;
+    addBox(m, Math.cos(a) * 4.2, 0, Math.sin(a) * 4.2, 0.35, 1.5, 0.35, d);
+  }
+  meshRadius(m);
+  return m;
+}
+
+/* freighter for escort duty */
+function mkFreighter(pal) {
+  const m = newMesh();
+  const A = pal, B = [pal[0]*0.6, pal[1]*0.6, pal[2]*0.62], C = [90, 190, 210];
+  addBox(m, 0, 0, -2, 2.2, 1.8, 5, B);          // engine block
+  addBox(m, 0, 0.4, 7, 1.5, 1.4, 3.2, A);       // bridge module
+  addBox(m, 0, 1.9, 7.4, 0.8, 0.6, 1.2, [120, 220, 255]);
+  addBox(m, 0, 0, 2.6, 0.6, 0.6, 5.2, C);       // spine
+  for (const s of [-1, 1])
+    for (let i = 0; i < 2; i++)
+      addBox(m, s * 2.0, 0, 1 + i * 2.6, 1.2, 1.2, 1.2, i % 2 ? A : B);
+  m.eng.push({ p: V(-1.1, 0, -7.4), r: 1.1, c: [255, 190, 120] });
+  m.eng.push({ p: V( 1.1, 0, -7.4), r: 1.1, c: [255, 190, 120] });
+  meshRadius(m);
+  return m;
+}
+
+/* small unmanned drone */
+function mkDrone(pal) {
+  const m = newMesh();
+  const A = pal, B = [pal[0]*0.55, pal[1]*0.55, pal[2]*0.6];
+  const n = addV(m, 0, 0, 1.5), t = addV(m, 0, 0, -1.1);
+  const r = [];
+  for (let i = 0; i < 4; i++) {
+    const a = i / 4 * TAU + 0.78;
+    r.push(addV(m, Math.cos(a) * 0.85, Math.sin(a) * 0.85, 0));
+  }
+  for (let i = 0; i < 4; i++) {
+    const j = (i + 1) % 4;
+    addF(m, [n, r[i], r[j]], A);
+    addF(m, [t, r[j], r[i]], B);
+  }
+  for (let i = 0; i < 4; i++) {
+    const a = i / 4 * TAU + 0.78;
+    addBox(m, Math.cos(a) * 1.25, Math.sin(a) * 1.25, -0.2, 0.22, 0.22, 0.5, B);
+  }
+  m.gun.push(V(0, 0, 1.5));
+  m.eng.push({ p: V(0, 0, -1.2), r: 0.5, c: [255, 120, 120] });
+  meshRadius(m);
+  return m;
+}
+/* =========================================================================
+   SPACESHIP SENSATION — 3. GAME DATA
+   ========================================================================= */
+
+/* palettes ------------------------------------------------------------- */
+const PAL = {
+  ally:  { hull:[ 96,132,164], hull2:[ 58, 84,110], trim:[ 88,214,240], glass:[ 30, 62, 96] },
+  ally2: { hull:[ 78,150,150], hull2:[ 44, 92, 98], trim:[120,240,214], glass:[ 26, 60, 70] },
+  foe:   { hull:[130, 66, 72], hull2:[ 82, 38, 44], trim:[255, 96, 96], glass:[ 60, 22, 28] },
+  foe2:  { hull:[112, 74,118], hull2:[ 64, 40, 74], trim:[224,110,255], glass:[ 48, 26, 60] },
+  neutral:{hull:[140,140,146], hull2:[ 92, 92,100], trim:[210,190,120], glass:[ 46, 52, 60] }
+};
+
+/* ------------------------------------------------------------------ SHIPS */
+const SHIPS = [
+  { id:'vanguard', name:'VX-9 VANGUARD', cls:'Multirole Fighter', cost:0,
+    dsc:'Fleet-standard strike fighter. No weaknesses, no surprises. It will keep you alive while you learn the void.',
+    hull:110, shield:90, regen:9, delay:4.0, speed:64, boost:1.85, turn:1.95, accel:34, mass:1,
+    geom:{ len:3.0, tail:2.0, bodyW:0.75, bodyH:0.62, span:2.9, sweep:1.5, wingY:0,
+           fin:1.0, twinFin:true, strake:0.4, engines:2, engR:0.42, pods:false } },
+
+  { id:'wraith', name:'SR-4 WRAITH', cls:'Interceptor', cost:2400,
+    dsc:'Stripped to the spars for pure angular velocity. Out-turns anything in the sky and folds if you let it get hit.',
+    hull:74, shield:64, regen:13, delay:3.2, speed:86, boost:2.25, turn:2.85, accel:52, mass:0.7,
+    geom:{ len:3.4, tail:1.7, bodyW:0.52, bodyH:0.46, span:2.3, sweep:2.3, wingY:0.35,
+           fin:0.85, twinFin:true, strake:0.25, engines:2, engR:0.34, pods:false } },
+
+  { id:'bulwark', name:'BT-12 BULWARK', cls:'Heavy Assault', cost:4200,
+    dsc:'Two hundred tonnes of armour with engines bolted on. Turns like a moon but absorbs punishment nothing else survives.',
+    hull:230, shield:170, regen:8, delay:5.0, speed:48, boost:1.5, turn:1.20, accel:22, mass:2.1,
+    geom:{ len:2.6, tail:2.6, bodyW:1.15, bodyH:0.86, span:3.4, sweep:1.1, wingY:-0.15,
+           fin:1.1, twinFin:false, strake:0.6, engines:4, engR:0.44, pods:true } },
+
+  { id:'nomad', name:'NM-6 NOMAD', cls:'Support Carrier', cost:6000,
+    dsc:'Command hull with an oversized capacitor bank. Shields snap back fast and nearby wingmen fight measurably harder.',
+    hull:140, shield:210, regen:22, delay:2.6, speed:57, boost:1.7, turn:1.65, accel:28, mass:1.5,
+    perk:'aura', perkTxt:'Wingmen within 260m gain +25% damage and +40% shield regen',
+    geom:{ len:2.8, tail:2.4, bodyW:1.0, bodyH:0.74, span:3.1, sweep:1.35, wingY:0.1,
+           fin:1.2, twinFin:true, strake:0.35, engines:3, engR:0.40, pods:true } },
+
+  { id:'eclipse', name:'EX-0 ECLIPSE', cls:'Prototype', cost:10500,
+    dsc:'Black-budget airframe running unlicensed thrust vectoring. Everything a Wraith does, while shrugging off return fire.',
+    hull:160, shield:150, regen:16, delay:3.0, speed:80, boost:2.1, turn:2.45, accel:46, mass:1.1,
+    perk:'phase', perkTxt:'Afterburner grants 35% damage reduction while burning',
+    geom:{ len:3.6, tail:2.1, bodyW:0.78, bodyH:0.52, span:3.3, sweep:2.6, wingY:-0.3,
+           fin:0.6, twinFin:true, strake:0.5, engines:2, engR:0.5, pods:true,
+           engC:[190,140,255] } }
+];
+
+/* --------------------------------------------------------------- PRIMARY */
+const PRIMARY = [
+  { id:'pulse', name:'PULSE LASER', cls:'Energy Repeater', cost:0,
+    dsc:'Reliable twin-linked pulse emitters. Modest punch, forgiving heat curve, near-instant travel time.',
+    kind:'bolt', dmg:10, rof:7.5, spd:430, heat:0.0190, life:1.7, spread:0.004,
+    col:[120,240,255], glow:[190,255,255], len:9, wid:1.5 },
+
+  { id:'autocannon', name:'MK-VII AUTOCANNON', cls:'Kinetic Repeater', cost:1400,
+    dsc:'Belt-fed slugs at absurd cadence. Individually weak, but a held trigger erases shields in seconds.',
+    kind:'bolt', dmg:6.5, rof:14, spd:520, heat:0.0119, life:1.5, spread:0.014,
+    col:[255,214,120], glow:[255,246,190], len:6, wid:1.2 },
+
+  { id:'scatter', name:'DISPERSAL SCATTERGUN', cls:'Shot Projector', cost:2200,
+    dsc:'Eight superheated pellets in a cone. Devastating inside 300m, worthless beyond it. Knife-fighter ordnance.',
+    kind:'bolt', dmg:6.5, rof:2.1, shots:8, heat:0.0952, spd:340, life:1.0, spread:0.055,
+    col:[255,150,90], glow:[255,220,150], len:5, wid:1.6 },
+
+  { id:'plasma', name:'ARC PLASMA CASTER', cls:'Heavy Projector', cost:3000,
+    dsc:'Slow magnetically-bottled plasma bolts that detonate on impact. Leads badly but splash forgives near-misses.',
+    kind:'bolt', dmg:30, rof:2.4, heat:0.0926, spd:295, life:2.4, spread:0.006, splash:11, splashDmg:16,
+    col:[170,140,255], glow:[230,210,255], len:12, wid:3.2 },
+
+  { id:'lance', name:'AETHER LANCE', cls:'Sustained Beam', cost:12000,
+    dsc:'Continuous coherent beam. No lead required, no travel time — just point and hold until the heat sinks scream. The single most expensive item in the yard, and worth every credit.',
+    kind:'beam', dps:70, range:760, heat:0.25, col:[130,255,220], glow:[220,255,245], wid:2.6 }
+];
+
+/* ------------------------------------------------------------- SECONDARY */
+const SECONDARY = [
+  { id:'seeker', name:'SEEKER MISSILES', cls:'Guided Ordnance', cost:0,
+    dsc:'Fire-and-forget hunters. Needs a moment of lock, then follows anything short of a hard break turn.',
+    kind:'missile', ammo:10, dmg:48, splash:16, splashDmg:26, spd:150, accel:120, turn:2.4,
+    life:7, cd:1.0, lock:0.85, salvo:1, col:[255,210,140] },
+
+  { id:'swarm', name:'HORNET SWARM RACK', cls:'Guided Ordnance', cost:3400,
+    dsc:'Twenty micro-missiles racked four abreast. Individually trivial, collectively a wall of tracking warheads.',
+    kind:'missile', ammo:24, dmg:15, splash:8, splashDmg:8, spd:190, accel:150, turn:3.2,
+    life:5.5, cd:1.3, lock:0.45, salvo:4, col:[255,160,220] },
+
+  { id:'torpedo', name:'BREACHER TORPEDOES', cls:'Unguided Ordnance', cost:2600,
+    dsc:'Dumb-fire capital-killers. No tracking whatsoever, but a direct hit removes most things from the sky.',
+    kind:'torp', ammo:6, dmg:105, splash:34, splashDmg:60, spd:210, accel:90,
+    life:6, cd:1.6, salvo:3, col:[255,120,90] },
+
+  { id:'emp', name:'EMP DETONATOR', cls:'Electronic Warfare', cost:3200,
+    dsc:'Strips shields flat and scrambles drive coils in a wide bubble. Sets up kills rather than making them.',
+    kind:'emp', ammo:6, radius:150, dmg:22, stun:3.2, cd:2.4, col:[140,220,255] },
+
+  { id:'drones', name:'WARDEN DRONE BAY', cls:'Deployable', cost:4600,
+    dsc:'Launches a pair of autonomous interceptors that pick their own targets and fight until destroyed.',
+    kind:'drone', ammo:4, count:2, life:26, cd:3.0, col:[150,255,190] }
+];
+
+/* ---------------------------------------------------------------- MODULES */
+const MODULES = [
+  { id:'standard', name:'STANDARD RIG', cls:'Baseline', cost:0,
+    dsc:'Factory configuration. No modifications, no compromises.', mods:{} },
+  { id:'ablative', name:'ABLATIVE PLATING', cls:'Defensive', cost:1100,
+    dsc:'Sacrificial hull laminate. More metal between you and them, at the cost of a little agility.',
+    mods:{ hull:1.35, turn:0.94, speed:0.96 } },
+  { id:'capacitor', name:'CAPACITOR CELL', cls:'Defensive', cost:1900,
+    dsc:'Overcharged shield bank with an aggressive recharge cycle and a much shorter cooldown.',
+    mods:{ shield:1.30, regen:1.6, delay:0.6 } },
+  { id:'thrusters', name:'OVERDRIVE THRUSTERS', cls:'Mobility', cost:2400,
+    dsc:'Unrated thrust vectoring. Faster, sharper, and a deeper afterburner reservoir.',
+    mods:{ speed:1.20, turn:1.14, accel:1.3, boostPool:1.5 } },
+  { id:'nanites', name:'REPAIR NANITES', cls:'Sustain', cost:3600,
+    dsc:'Structural repair swarm. Slowly rebuilds hull when you break contact — the difference in a long fight.',
+    mods:{ hullRegen:3.0 } },
+  { id:'targeting', name:'TARGETING VI', cls:'Offensive', cost:4400,
+    dsc:'Predictive fire-control intelligence. Tighter grouping, harder hits, faster missile locks.',
+    mods:{ dmg:1.22, spread:0.45, lock:0.55 } }
+];
+
+/* ------------------------------------------------------------------ MAPS */
+const MAPS = [
+  { id:'belt', name:'KESSLER DRIFT', sw:'linear-gradient(90deg,#3a4a5e,#8fa6bd)',
+    dsc:'A shattered moon strung across a hundred kilometres. Cover everywhere, and everything in it wants to hit you.',
+    sky:['#0a1626','#040a14'], fog:[26,44,66], fogNear:520, fogFar:1500, star:[190,215,255], starN:900,
+    rocks:{ n:78, min:9, max:34, pal:[132,138,148], jag:0.6 }, wrecks:0, radius:1500, sun:[0.4,0.6,0.7] },
+
+  { id:'nebula', name:'CYGNUS VEIL', sw:'linear-gradient(90deg,#4a2a63,#c05fb0)',
+    dsc:'Ionised hydrogen thick enough to hide a battlegroup. Visibility is short, and contacts appear at knife range.',
+    sky:['#2a0f3a','#0a0414'], fog:[74,26,86], fogNear:180, fogFar:620, star:[255,190,240], starN:520,
+    rocks:{ n:30, min:12, max:40, pal:[118,88,132], jag:0.7 }, wrecks:0, radius:1200, sun:[-0.3,0.5,0.8],
+    clouds:14 },
+
+  { id:'boneyard', name:'BONEYARD NINE', sw:'linear-gradient(90deg,#1d2a2a,#5f7d70)',
+    dsc:'A ship graveyard from the last war. Kilometre-long hulks drift in the dark, still venting after forty years.',
+    sky:['#071414','#02080a'], fog:[18,38,40], fogNear:400, fogFar:1250, star:[200,255,240], starN:700,
+    rocks:{ n:26, min:8, max:22, pal:[96,110,108], jag:0.55 }, wrecks:22, radius:1350, sun:[0.2,-0.4,0.85] },
+
+  { id:'forge', name:'HELION ANVIL', sw:'linear-gradient(90deg,#7a3410,#ffb347)',
+    dsc:'Close orbit of a flare star. The light is blinding, the debris is molten, and nothing here stays cool.',
+    sky:['#3d1804','#0e0602'], fog:[120,52,14], fogNear:600, fogFar:1700, star:[255,220,170], starN:600,
+    rocks:{ n:56, min:7, max:26, pal:[158,102,58], jag:0.65 }, wrecks:6, radius:1500, sun:[0.1,0.25,-0.95],
+    star_flare:true }
+];
+
+/* ----------------------------------------------------------------- MODES */
+const MODES = [
+  { id:'tdm', name:'TEAM DEATHMATCH', short:'TDM',
+    dsc:'Two squadrons, one volume of space. Reinforcements keep arriving. First wing to thirty confirmed kills takes it.',
+    limit:30, allies:3, foes:5, reinforce:true },
+
+  { id:'beacon', name:'CAPTURE THE BEACON', short:'BEACON',
+    dsc:'Three derelict nav-beacons. Hold them to bleed the enemy score down. Fighting is a means, not the objective.',
+    limit:300, allies:3, foes:4, beacons:3, reinforce:true },
+
+  { id:'escort', name:'STRIKE & ESCORT', short:'ESCORT',
+    dsc:'Walk a freighter through three waypoints while enemy capital ships try to stop you. Kill the dreadnoughts. Keep the ship alive.',
+    allies:3, foes:4, escort:true, bosses:3 }
+];
+
+const DIFFS = [
+  { id:'rookie',  name:'ROOKIE',  aim:0.55, agg:0.62, dmg:0.65, hp:0.8,  pay:0.8 },
+  { id:'veteran', name:'VETERAN', aim:0.83, agg:0.88, dmg:1.0,  hp:1.0,  pay:1.0 },
+  { id:'ace',     name:'ACE',     aim:0.95, agg:1.0,  dmg:1.35, hp:1.25, pay:1.6 }
+];
+
+/* ---------------------------------------------------------- ENEMY / AI SHIPS */
+const NPC = {
+  scout:  { name:'WASP DRONE',  hull:38,  shield:0,   speed:78, turn:2.6, accel:44,
+            dmg:5,  rof:6,  bspd:400, range:520, rad:1.6, score:1, cr:14,  mesh:'drone' },
+  raider: { name:'TALON RAIDER',hull:66,  shield:34,  speed:70, turn:2.1, accel:36,
+            dmg:8,  rof:5,  bspd:430, range:640, rad:2.6, score:1, cr:24,  mesh:'fighterA' },
+  lancer: { name:'HALBERD',     hull:120, shield:78,  speed:62, turn:1.7, accel:30,
+            dmg:13, rof:3.4,bspd:450, range:720, rad:3.1, score:2, cr:44,  mesh:'fighterB' },
+  gunship:{ name:'MAUL GUNSHIP',hull:210, shield:120, speed:48, turn:1.15,accel:22,
+            dmg:20, rof:2.0,bspd:380, range:760, rad:4.0, score:3, cr:78,  mesh:'gunship', missiles:true },
+  ace:    { name:'WRAITH-X',    hull:150, shield:110, speed:88, turn:2.9, accel:50,
+            dmg:12, rof:6.5,bspd:500, range:700, rad:2.6, score:4, cr:120, mesh:'fighterC', elite:true },
+  dread:  { name:'DREADNOUGHT', hull:1500,shield:500, speed:16, turn:0.16,accel:5,
+            dmg:34, rof:1.5,bspd:340, range:900, rad:26, score:15, cr:700, mesh:'capital',
+            boss:true, missiles:true },
+  // friendly
+  wingman:{ name:'ALLIED WING', hull:96,  shield:64,  speed:70, turn:2.0, accel:36,
+            dmg:9,  rof:5,  bspd:440, range:660, rad:2.6, score:1, cr:0,   mesh:'fighterAlly' },
+  wingman2:{name:'ALLIED LANCE',hull:150, shield:96,  speed:60, turn:1.6, accel:28,
+            dmg:14, rof:3.2,bspd:450, range:720, rad:3.1, score:2, cr:0,   mesh:'fighterAlly2' },
+  freight:{ name:'MV CALLISTO', hull:4200,shield:1500, speed:30, turn:0.45, accel:10,
+            dmg:0,  rof:0,  bspd:0,   range:0,   rad:9,  score:0, cr:0,   mesh:'freighter' },
+  wdrone: { name:'WARDEN',      hull:34,  shield:0,   speed:82, turn:3.0, accel:50,
+            dmg:7,  rof:6,  bspd:420, range:480, rad:1.5, score:0, cr:0,   mesh:'droneAlly' }
+};
+
+/* mesh registry — built once on boot */
+const MESH = {};
+function buildMeshes() {
+  for (const s of SHIPS) {
+    MESH['ship_' + s.id] = mkFighter(Object.assign({}, s.geom, PAL.ally, { canopy:true }));
+    MESH['shipF_' + s.id] = mkFighter(Object.assign({}, s.geom, PAL.foe, { canopy:true }));
+  }
+  MESH.drone       = mkDrone(PAL.foe.trim);
+  MESH.droneAlly   = mkDrone(PAL.ally2.trim);
+  MESH.fighterA    = mkFighter(Object.assign({ len:2.8, tail:1.8, bodyW:0.66, bodyH:0.52, span:2.6,
+                       sweep:1.9, wingY:0.2, fin:0.8, twinFin:true, strake:0.3, engines:2 }, PAL.foe));
+  MESH.fighterB    = mkFighter(Object.assign({ len:3.1, tail:2.2, bodyW:0.9, bodyH:0.62, span:3.2,
+                       sweep:1.2, wingY:-0.25, fin:1.0, twinFin:false, strake:0.5, engines:3, pods:true }, PAL.foe2));
+  MESH.fighterC    = mkFighter(Object.assign({ len:3.5, tail:1.9, bodyW:0.6, bodyH:0.44, span:2.5,
+                       sweep:2.5, wingY:0.4, fin:0.7, twinFin:true, strake:0.3, engines:2,
+                       engC:[255,120,180] }, PAL.foe2));
+  MESH.gunship     = mkFighter(Object.assign({ len:2.4, tail:2.8, bodyW:1.25, bodyH:0.95, span:3.6,
+                       sweep:0.9, wingY:-0.1, fin:1.2, twinFin:true, strake:0.7, engines:4, pods:true }, PAL.foe));
+  MESH.fighterAlly = mkFighter(Object.assign({ len:2.9, tail:1.9, bodyW:0.7, bodyH:0.55, span:2.8,
+                       sweep:1.6, wingY:0, fin:0.9, twinFin:true, strake:0.35, engines:2 }, PAL.ally));
+  MESH.fighterAlly2= mkFighter(Object.assign({ len:3.0, tail:2.3, bodyW:0.95, bodyH:0.66, span:3.2,
+                       sweep:1.2, wingY:-0.2, fin:1.05, twinFin:false, strake:0.5, engines:3, pods:true }, PAL.ally2));
+  MESH.capital     = mkCapital(Object.assign({ len:26, wide:6.5, high:4.4, turrets:4, engines:4 }, PAL.foe));
+  MESH.freighter   = mkFreighter(PAL.neutral.hull);
+  MESH.beaconN     = mkBeacon([190,190,200]);
+  MESH.beaconA     = mkBeacon([110,225,255]);
+  MESH.beaconB     = mkBeacon([255,110,110]);
+  // placeholder rocks; buildMap() replaces these with map-tinted variants
+  for (let i = 0; i < 8; i++) MESH['rock' + i] = mkRock(1000 + i * 77, 1, 0.6, [130, 136, 146]);
+  for (let i = 0; i < 4; i++) MESH['wreck' + i] = mkWreck(500 + i * 131, [104, 116, 122]);
+}
+/* =========================================================================
+   SPACESHIP SENSATION — 4. RENDERER  (software 3D on a 2D canvas)
+   ========================================================================= */
+const mainCvs = document.getElementById('game');
+const mainCtx = mainCvs.getContext('2d');
+/* `ctx` is swapped when rendering the hangar preview to a second canvas */
+let cvs = mainCvs, ctx = mainCtx;
+let VW = 0, VH = 0, CX = 0, CY = 0, FOC = 700, DPR = 1, FOVDEG = 74;
+let mainVW = 0, mainVH = 0;
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  mainVW = Math.floor(window.innerWidth); mainVH = Math.floor(window.innerHeight);
+  mainCvs.width = Math.floor(mainVW * DPR); mainCvs.height = Math.floor(mainVH * DPR);
+  mainCvs.style.width = mainVW + 'px'; mainCvs.style.height = mainVH + 'px';
+  useMainCanvas();
+}
+function setViewport(c, w, h, fovDeg) {
+  cvs = c; ctx = c.getContext('2d');
+  VW = w; VH = h; CX = w / 2; CY = h / 2; FOVDEG = fovDeg || 74;
+  FOC = (VH * 0.5) / Math.tan((FOVDEG * Math.PI / 180) / 2);
+}
+function useMainCanvas() { setViewport(mainCvs, mainVW, mainVH, 74); }
+window.addEventListener('resize', resize);
+resize();
+
+/* the camera --------------------------------------------------------- */
+const CAM = { pos: V(0, 0, -20), q: Q(), fwd: V(0,0,1), up: V(0,1,0), right: V(1,0,0), shake: 0 };
+function camUpdateBasis() {
+  CAM.fwd = qfwd(CAM.q); CAM.up = qup(CAM.q); CAM.right = qright(CAM.q);
+}
+/* world point -> camera space {x,y,z} */
+function toCam(p) {
+  const dx = p.x - CAM.pos.x, dy = p.y - CAM.pos.y, dz = p.z - CAM.pos.z;
+  return {
+    x: dx*CAM.right.x + dy*CAM.right.y + dz*CAM.right.z,
+    y: dx*CAM.up.x    + dy*CAM.up.y    + dz*CAM.up.z,
+    z: dx*CAM.fwd.x   + dy*CAM.fwd.y   + dz*CAM.fwd.z
+  };
+}
+const NEAR = 0.6;
+/* camera space -> screen; returns null when behind the near plane */
+function proj(c) {
+  if (c.z < NEAR) return null;
+  const k = FOC / c.z;
+  return { x: CX + c.x * k, y: CY - c.y * k, z: c.z, k: k };
+}
+function worldToScreen(p) { return proj(toCam(p)); }
+
+/* precompute face normals in model space */
+function ensureNormals(mesh) {
+  if (mesh._n) return;
+  for (const f of mesh.f) {
+    const a = mesh.v[f.i[0]], b = mesh.v[f.i[1]], c = mesh.v[f.i[2]];
+    f.n = vnorm(vcross(vsub(b, a), vsub(c, a)));
+  }
+  mesh._n = true;
+}
+
+/* ---- environment currently being rendered ---- */
+const ENV = {
+  fog:[20,30,44], fogNear:500, fogFar:1400, sun:vnorm(V(0.4,0.6,0.7)),
+  sky:['#0a1626','#040a14'], amb:0.30
+};
+
+/* scratch buffers reused every frame */
+const _cs = []; const _sp = [];
+
+function drawMesh(mesh, pos, q, scale, opt) {
+  ensureNormals(mesh);
+  opt = opt || {};
+  const cc = toCam(pos);
+  const R = mesh.r * scale;
+  if (cc.z < -R) return null;
+  if (cc.z > ENV.fogFar + R) return null;
+  // cheap cone cull
+  const lim = (Math.abs(cc.z) + R) * 2.1;
+  if (Math.abs(cc.x) > lim + R || Math.abs(cc.y) > lim + R) return null;
+
+  const nv = mesh.v.length;
+  for (let i = 0; i < nv; i++) {
+    const lv = mesh.v[i];
+    // scale -> rotate -> translate, then straight into camera space
+    const rx = lv.x * scale, ry = lv.y * scale, rz = lv.z * scale;
+    const tx = 2*(q.y*rz - q.z*ry), ty = 2*(q.z*rx - q.x*rz), tz = 2*(q.x*ry - q.y*rx);
+    const wx = pos.x + rx + q.w*tx + q.y*tz - q.z*ty;
+    const wy = pos.y + ry + q.w*ty + q.z*tx - q.x*tz;
+    const wz = pos.z + rz + q.w*tz + q.x*ty - q.y*tx;
+    const dx = wx - CAM.pos.x, dy = wy - CAM.pos.y, dz = wz - CAM.pos.z;
+    const cx = dx*CAM.right.x + dy*CAM.right.y + dz*CAM.right.z;
+    const cy = dx*CAM.up.x    + dy*CAM.up.y    + dz*CAM.up.z;
+    const cz = dx*CAM.fwd.x   + dy*CAM.fwd.y   + dz*CAM.fwd.z;
+    _cs[i] = cz;
+    if (cz >= NEAR) { const k = FOC / cz; _sp[i * 2] = CX + cx * k; _sp[i * 2 + 1] = CY - cy * k; }
+    else { _sp[i * 2] = NaN; _sp[i * 2 + 1] = NaN; }
+  }
+
+  // face ordering
+  const order = [];
+  const nf = mesh.f.length;
+  for (let fi = 0; fi < nf; fi++) {
+    const idx = mesh.f[fi].i;
+    let z = 0, ok = true;
+    for (let j = 0; j < idx.length; j++) {
+      const cz = _cs[idx[j]];
+      if (cz < NEAR) { ok = false; break; }
+      z += cz;
+    }
+    if (ok) order.push({ f: mesh.f[fi], z: z / idx.length });
+  }
+  order.sort((a, b) => b.z - a.z);
+
+  const flash = opt.flash || 0;
+  const tint = opt.tint;
+  const alpha = opt.alpha === undefined ? 1 : opt.alpha;
+  if (alpha < 1) { ctx.save(); ctx.globalAlpha = alpha; }
+
+  for (let oi = 0; oi < order.length; oi++) {
+    const f = order[oi].f, z = order[oi].z;
+    const n = f.n;
+    // world-space normal
+    const tx = 2*(q.y*n.z - q.z*n.y), ty = 2*(q.z*n.x - q.x*n.z), tz = 2*(q.x*n.y - q.y*n.x);
+    const nx = n.x + q.w*tx + q.y*tz - q.z*ty;
+    const ny = n.y + q.w*ty + q.z*tx - q.x*tz;
+    const nz = n.z + q.w*tz + q.x*ty - q.y*tx;
+    let l = nx*ENV.sun.x + ny*ENV.sun.y + nz*ENV.sun.z;
+    l = ENV.amb + (1 - ENV.amb) * Math.abs(l) * (l > 0 ? 1 : 0.55);
+    if (f.gl) l = 1.15;
+    let r = f.c[0] * l, g = f.c[1] * l, b = f.c[2] * l;
+    if (tint) { r = lerp(r, tint[0], 0.45); g = lerp(g, tint[1], 0.45); b = lerp(b, tint[2], 0.45); }
+    if (flash > 0) { r = lerp(r, 255, flash); g = lerp(g, 235, flash); b = lerp(b, 210, flash); }
+    // fog
+    const ft = clamp((z - ENV.fogNear) / (ENV.fogFar - ENV.fogNear), 0, 1) * 0.94;
+    if (ft > 0) { r = lerp(r, ENV.fog[0], ft); g = lerp(g, ENV.fog[1], ft); b = lerp(b, ENV.fog[2], ft); }
+
+    const idx = f.i;
+    ctx.beginPath();
+    ctx.moveTo(_sp[idx[0]*2], _sp[idx[0]*2+1]);
+    for (let j = 1; j < idx.length; j++) ctx.lineTo(_sp[idx[j]*2], _sp[idx[j]*2+1]);
+    ctx.closePath();
+    ctx.fillStyle = rgbStr(r, g, b);
+    ctx.fill();
+    if (opt.wire) { ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 0.7; ctx.stroke(); }
+  }
+  if (alpha < 1) ctx.restore();
+  return cc;
+}
+
+/* additive glow blob ---------------------------------------------------- */
+function glow(sx, sy, rad, col, a) {
+  if (rad < 0.4 || a <= 0.01) return;
+  if (sx < -rad || sx > VW + rad || sy < -rad || sy > VH + rad) return;
+  const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, rad);
+  const c = 'rgba(' + (col[0]|0) + ',' + (col[1]|0) + ',' + (col[2]|0) + ',';
+  g.addColorStop(0, c + clamp(a, 0, 1) + ')');
+  g.addColorStop(0.35, c + clamp(a * 0.42, 0, 1) + ')');
+  g.addColorStop(1, c + '0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(sx, sy, rad, 0, TAU); ctx.fill();
+}
+function glowWorld(p, radWorld, col, a) {
+  const s = worldToScreen(p);
+  if (!s) return;
+  glow(s.x, s.y, radWorld * s.k, col, a);
+}
+
+/* ---- starfield ------------------------------------------------------ */
+let STARS = [];
+function buildStars(n, tint) {
+  STARS = [];
+  for (let i = 0; i < n; i++) {
+    const d = vrandUnit();
+    STARS.push({ d: d, b: Math.pow(Math.random(), 2.2) * 0.9 + 0.1,
+      c: [ clamp(tint[0] + rnd(-40, 25), 0, 255), clamp(tint[1] + rnd(-40, 25), 0, 255),
+           clamp(tint[2] + rnd(-30, 25), 0, 255) ] });
+  }
+}
+function drawStars() {
+  const R = CAM.right, U = CAM.up, F = CAM.fwd;
+  for (let i = 0; i < STARS.length; i++) {
+    const s = STARS[i], d = s.d;
+    const z = d.x*F.x + d.y*F.y + d.z*F.z;
+    if (z <= 0.08) continue;
+    const x = d.x*R.x + d.y*R.y + d.z*R.z;
+    const y = d.x*U.x + d.y*U.y + d.z*U.z;
+    const k = FOC / z;
+    const sx = CX + x * k, sy = CY - y * k;
+    if (sx < 0 || sx > VW || sy < 0 || sy > VH) continue;
+    const a = s.b * clamp(z * 1.6, 0, 1);
+    ctx.fillStyle = 'rgba(' + (s.c[0]|0) + ',' + (s.c[1]|0) + ',' + (s.c[2]|0) + ',' + a.toFixed(2) + ')';
+    const sz = s.b > 0.72 ? 2 : 1;
+    ctx.fillRect(sx, sy, sz, sz);
+  }
+}
+
+/* ---- backdrop ------------------------------------------------------- */
+function drawSky() {
+  const g = ctx.createLinearGradient(0, 0, 0, VH);
+  g.addColorStop(0, ENV.sky[0]); g.addColorStop(1, ENV.sky[1]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+}
+
+/* screen-space frame helpers ------------------------------------------ */
+function bracket(sx, sy, r, col, lw) {
+  ctx.strokeStyle = col; ctx.lineWidth = lw || 1.6;
+  const c = r * 0.42;
+  ctx.beginPath();
+  ctx.moveTo(sx-r, sy-r+c); ctx.lineTo(sx-r, sy-r); ctx.lineTo(sx-r+c, sy-r);
+  ctx.moveTo(sx+r-c, sy-r); ctx.lineTo(sx+r, sy-r); ctx.lineTo(sx+r, sy-r+c);
+  ctx.moveTo(sx+r, sy+r-c); ctx.lineTo(sx+r, sy+r); ctx.lineTo(sx+r-c, sy+r);
+  ctx.moveTo(sx-r+c, sy+r); ctx.lineTo(sx-r, sy+r); ctx.lineTo(sx-r, sy+r-c);
+  ctx.stroke();
+}
+/* floating hull/shield readout. Shield sits as a thinner strip above the hull. */
+function healthBar(cx, y, w, h, hullF, shldF, alpha, hot) {
+  const x = cx - w / 2;
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = 'rgba(2,8,14,.62)';
+  ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+  ctx.fillStyle = hullF > 0.5 ? (hot ? '#ff9a72' : '#e8734f')
+                : hullF > 0.22 ? '#ffb347' : '#ff4f4f';
+  ctx.fillRect(x, y, w * clamp(hullF, 0, 1), h);
+  ctx.strokeStyle = hot ? 'rgba(255,190,170,.75)' : 'rgba(255,160,140,.35)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1);
+  if (shldF > 0.001) {
+    const sh = Math.max(2, h * 0.55), sy = y - sh - 2;
+    ctx.fillStyle = 'rgba(2,8,14,.62)';
+    ctx.fillRect(x - 1, sy - 1, w + 2, sh + 2);
+    ctx.fillStyle = hot ? '#b6f4ff' : '#6fd4ee';
+    ctx.fillRect(x, sy, w * clamp(shldF, 0, 1), sh);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* draw an off-screen direction chevron pointing at a world position */
+function edgeArrow(p, col) {
+  const c = toCam(p);
+  let x = c.x, y = c.y;
+  if (c.z > NEAR) {
+    const k = FOC / c.z; x = c.x * k; y = -c.y * k;
+  } else {
+    const l = Math.hypot(c.x, c.y) || 1;
+    x = c.x / l * 4000; y = -c.y / l * 4000;
+  }
+  const m = 56, hx = CX - m, hy = CY - m;
+  const s = Math.min(hx / (Math.abs(x) || 1e-6), hy / (Math.abs(y) || 1e-6));
+  if (s >= 1 && c.z > NEAR) return false;
+  const ax = CX + x * s, ay = CY + y * s;
+  const ang = Math.atan2(y, x);
+  ctx.save(); ctx.translate(ax, ay); ctx.rotate(ang);
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-6, 5.5); ctx.lineTo(-6, -5.5); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  return true;
+}
+/* =========================================================================
+   SPACESHIP SENSATION — 5. SIMULATION: entities, flight, weapons, AI
+   ========================================================================= */
+const G = {
+  on:false, paused:false, over:false, t:0, dt:0,
+  mode:null, map:null, diff:null,
+  ships:[], bullets:[], missiles:[], fx:[], beams:[], rocks:[], beacons:[],
+  player:null, freighter:null,
+  scoreA:0, scoreB:0, limit:30,
+  stats:{ kills:0, deaths:0, dmgOut:0, shots:0, hits:0, obj:0, credits:0 },
+  feed:[], nextId:1, spawnT:0, bossIdx:0, wpIdx:0, waypoints:[],
+  endTimer:0, result:null, elapsed:0
+};
+
+function feed(txt, col) {
+  G.feed.unshift({ t: txt, c: col || '#cfe9f2', life: 5.5 });
+  if (G.feed.length > 6) G.feed.pop();
+}
+
+/* ------------------------------------------------------------ entity ctor */
+function makeShip(cfg) {
+  const s = {
+    id: G.nextId++, team: cfg.team, kind: cfg.kind, name: cfg.name,
+    pos: cfg.pos || V(), q: cfg.q || Q(), vel: cfg.vel || V(),
+    hullMax: cfg.hull, hull: cfg.hull,
+    shieldMax: cfg.shield, shield: cfg.shield,
+    regen: cfg.regen || 8, delay: cfg.delay || 4, shTimer: 0,
+    speed: cfg.speed, turn: cfg.turn, accel: cfg.accel, throttle: 0.75,
+    mesh: cfg.mesh, scale: cfg.scale || 1, radius: cfg.radius || 3,
+    alive: true, flash: 0, boss: !!cfg.boss, isPlayer: !!cfg.isPlayer,
+    gun: cfg.gun || null, cool: 0, heat: 0, over: false,
+    missileCd: 0, missileAmmo: cfg.missileAmmo || 0,
+    target: null, ai: cfg.ai || null, stun: 0, hullRegen: cfg.hullRegen || 0,
+    score: cfg.score || 1, cr: cfg.cr || 0, elite: !!cfg.elite,
+    life: cfg.life || 0, born: G.t, dmgTaken: 0, capture: !!cfg.capture,
+    noTarget: !!cfg.noTarget, engGlow: 0.6
+  };
+  G.ships.push(s);
+  return s;
+}
+
+function spawnNPC(key, team, pos, q, opt) {
+  const d = NPC[key], df = G.diff;
+  const hpk = team === 'b' ? df.hp : 1;
+  const s = makeShip({
+    team, kind: key, name: d.name,
+    pos, q: q || qLookAt(vnorm(vmul(pos, -1)), V(0,1,0)),
+    hull: d.hull * hpk, shield: d.shield * hpk,
+    regen: 8, delay: 4.2,
+    speed: d.speed, turn: d.turn, accel: d.accel,
+    mesh: MESH[d.mesh], scale: d.boss ? 1 : 1, radius: d.rad,
+    boss: d.boss, elite: d.elite, score: d.score, cr: d.cr,
+    gun: { dmg: d.dmg * (team === 'b' ? df.dmg : 1), rof: d.rof, spd: d.bspd, range: d.range,
+           col: team === 'b' ? [255,140,110] : [140,220,255] },
+    missileAmmo: d.missiles ? 999 : 0,
+    ai: { state:'pursue', tCd:0, evade:0, wob: rnd(0,TAU), skill: team === 'b' ? df.aim : 0.8,
+          agg: team === 'b' ? df.agg : 0.85, burst:0, roam:vrandSphere(400),
+          role: Math.random() < 0.62 ? 'obj' : 'kill' },
+    noTarget: key === 'freight'
+  });
+  Object.assign(s, opt || {});
+  return s;
+}
+
+/* -------------------------------------------------------------- damage */
+function damage(s, amt, from, cause) {
+  if (!s.alive || amt <= 0) return;
+  // Eclipse afterburner mitigation
+  if (s.isPlayer && s.perk === 'phase' && s.boosting) amt *= 0.65;
+  // the freighter is an objective on a timer, not a punching bag
+  if (s.kind === 'freight') amt *= 0.4;
+  s.dmgTaken += amt;
+  s.shTimer = 0;
+  if (s.shield > 0) {
+    const a = Math.min(s.shield, amt);
+    s.shield -= a; amt -= a;
+    if (s.isPlayer) hudHitFlash(0.35);
+  }
+  if (amt > 0) {
+    s.hull -= amt;
+    s.flash = Math.min(1, s.flash + 0.55);
+    if (s.isPlayer) hudHitFlash(0.85);
+  }
+  if (from && from.isPlayer) { G.stats.dmgOut += Math.min(amt + 0.0001, 9999); }
+  if (s.hull <= 0) destroyShip(s, from, cause);
+}
+
+function destroyShip(s, by, cause) {
+  if (!s.alive) return;
+  s.alive = false;
+  const big = s.boss ? 4.2 : s.radius > 6 ? 2.4 : 1;
+  explode(s.pos, s.radius * (s.boss ? 1.6 : 2.2), s.team === 'b' ? [255,150,90] : [140,220,255], big, s.vel);
+  if (s.boss) CAM.shake = Math.max(CAM.shake, 1.4);
+  else if (G.player && vdist(s.pos, G.player.pos) < 120) CAM.shake = Math.max(CAM.shake, 0.5);
+
+  if (s.isPlayer) {
+    G.stats.deaths++;
+    feed('YOU WERE DESTROYED', '#ff6b6b');
+    if (G.mode.id !== 'escort') G.scoreB += 1;
+    schedulePlayerRespawn();
+    return;
+  }
+  if (s === G.freighter) { endMatch(false, 'THE FREIGHTER WAS LOST'); return; }
+
+  if (by && by.isPlayer) {
+    G.stats.kills++;
+    G.stats.credits += Math.round(s.cr * G.diff.pay);
+    feed('YOU  ✕  ' + s.name, s.team === 'b' ? '#ffd27b' : '#ff9f9f');
+  } else if (s.team === 'b') {
+    feed('ALLIED WING  ✕  ' + s.name, '#9fd8ff');
+  } else if (s.team === 'a') {
+    feed(s.name + '  LOST', '#ff9f9f');
+  }
+  if (s.team === 'b') { if (G.mode.id === 'tdm') G.scoreA += s.score; }
+  else if (s.team === 'a' && !s.temp) { if (G.mode.id === 'tdm') G.scoreB += s.score; }
+}
+
+/* -------------------------------------------------------------- effects */
+function explode(pos, rad, col, power, vel) {
+  G.fx.push({ kind:'blast', pos: vcopy(pos), t:0, life: 0.55 + power * 0.35,
+              rad: rad, col: col, power: power });
+  const n = Math.min(46, 10 + power * 14);
+  for (let i = 0; i < n; i++) {
+    const d = vrandUnit();
+    G.fx.push({ kind:'spark', pos: vcopy(pos), t:0, life: rnd(0.4, 1.3) * (0.7 + power*0.5),
+      vel: vadd(vmul(d, rnd(8, 34) * (0.6 + power * 0.55)), vel ? vmul(vel, 0.35) : V()),
+      col: col, sz: rnd(0.4, 1.5) * (0.7 + power * 0.4) });
+  }
+  for (let i = 0; i < Math.min(14, 3 + power * 4); i++) {
+    const d = vrandUnit();
+    G.fx.push({ kind:'debris', pos: vcopy(pos), t:0, life: rnd(1.4, 3.4),
+      vel: vadd(vmul(d, rnd(5, 22)), vel ? vmul(vel, 0.5) : V()),
+      q: qnorm(Q(rnd(-1,1), rnd(-1,1), rnd(-1,1), rnd(-1,1))),
+      spin: vmul(vrandUnit(), rnd(1, 5)), sz: rnd(0.3, 1.1) * (0.6 + power * 0.6),
+      col: col });
+  }
+}
+function hitSpark(pos, col, n) {
+  for (let i = 0; i < (n || 5); i++)
+    G.fx.push({ kind:'spark', pos: vcopy(pos), t:0, life: rnd(0.14, 0.4),
+      vel: vmul(vrandUnit(), rnd(6, 22)), col: col, sz: rnd(0.25, 0.7) });
+}
+
+/* ------------------------------------------------------------ weapons */
+function fireBolt(owner, w, dirOverride, muzzleOverride, dmgMul) {
+  const fwd = qfwd(owner.q);
+  const shots = w.shots || 1;
+  const guns = owner.isPlayer && owner.mesh && owner.mesh.gun.length
+    ? owner.mesh.gun : [V(0, 0, owner.radius * 0.6)];
+  for (let i = 0; i < shots; i++) {
+    const gi = (owner._gi = ((owner._gi || 0) + 1)) % guns.length;
+    const off = muzzleOverride || qrot(owner.q, vmul(guns[gi], owner.scale));
+    const mp = vadd(owner.pos, off);
+    let dir = dirOverride ? vcopy(dirOverride) : fwd;
+    const sp = (w.spread || 0) * (owner.spreadMul === undefined ? 1 : owner.spreadMul);
+    if (sp > 0) dir = vnorm(vadd(dir, vmul(vrandUnit(), sp)));
+    G.bullets.push({
+      pos: mp, prev: vcopy(mp), vel: vadd(vmul(dir, w.spd), vmul(owner.vel, 0.35)),
+      life: w.life || 1.6, dmg: w.dmg * (dmgMul || 1), team: owner.team, owner: owner,
+      col: w.col, glow: w.glow || w.col, len: w.len || 8, wid: w.wid || 1.4,
+      splash: w.splash || 0, splashDmg: w.splashDmg || 0
+    });
+  }
+  if (owner.isPlayer) G.stats.shots += shots;
+}
+
+function fireMissile(owner, w, target, dmgMul) {
+  const n = w.salvo || 1;
+  for (let i = 0; i < n; i++) {
+    const lat = qrot(owner.q, V((i - (n - 1) / 2) * 1.1, -0.35, 0));
+    const p = vadd(owner.pos, vadd(lat, vmul(qfwd(owner.q), owner.radius * 0.5)));
+    G.missiles.push({
+      pos: p, q: owner.q, vel: vadd(vmul(qfwd(owner.q), Math.max(vlen(owner.vel), 30)),
+        vmul(qrot(owner.q, V((i - (n-1)/2) * 6, -6, 0)), 1)),
+      spd: 0, maxSpd: w.spd, accel: w.accel, turn: w.turn || 0,
+      target: (w.kind === 'missile') ? target : null,
+      life: w.life, dmg: w.dmg * (dmgMul || 1), splash: w.splash, splashDmg: w.splashDmg * (dmgMul || 1),
+      team: owner.team, owner: owner, col: w.col, arm: 0.12
+    });
+  }
+  if (owner.isPlayer) G.stats.shots += n;
+}
+
+function empBurst(owner, w) {
+  const p = vcopy(owner.pos);
+  G.fx.push({ kind:'emp', pos: p, t:0, life:0.7, rad: w.radius, col: w.col });
+  CAM.shake = Math.max(CAM.shake, 0.35);
+  for (const s of G.ships) {
+    if (!s.alive || s.team === owner.team) continue;
+    const d = vdist(s.pos, p);
+    if (d > w.radius + s.radius) continue;
+    s.shield = 0; s.shTimer = 0;
+    s.stun = Math.max(s.stun, w.stun * (s.boss ? 0.4 : 1));
+    damage(s, w.dmg, owner, 'emp');
+  }
+}
+
+function deployDrones(owner, w) {
+  for (let i = 0; i < w.count; i++) {
+    const off = qrot(owner.q, V((i ? 1 : -1) * 4, -2, -2));
+    const d = spawnNPC('wdrone', owner.team, vadd(owner.pos, off), owner.q);
+    d.life = w.life; d.temp = true; d.born = G.t;
+    d.vel = vcopy(owner.vel);
+  }
+  feed('WARDEN DRONES DEPLOYED', '#9fffc4');
+}
+
+/* hitscan beam ---------------------------------------------------------- */
+function fireBeam(owner, w, dt, dmgMul, dirOverride) {
+  const o = vadd(owner.pos, vmul(qfwd(owner.q), owner.radius * 0.7));
+  const dir = dirOverride ? vnorm(dirOverride) : qfwd(owner.q);
+  let best = null, bestT = w.range;
+  for (const s of G.ships) {
+    if (!s.alive || s.team === owner.team || s === owner) continue;
+    const t = raySphere(o, dir, s.pos, s.radius * 1.15);
+    if (t !== null && t < bestT) { bestT = t; best = s; }
+  }
+  for (const r of G.rocks) {
+    const t = raySphere(o, dir, r.pos, r.radius);
+    if (t !== null && t < bestT) { bestT = t; best = null; }
+  }
+  const end = vadd(o, vmul(dir, bestT));
+  G.beams.push({ a: o, b: end, col: w.col, glow: w.glow, wid: w.wid, life: 0.05 });
+  if (best) {
+    damage(best, w.dps * dt * (dmgMul || 1), owner, 'beam');
+    if (Math.random() < dt * 26) hitSpark(end, w.glow, 2);
+    if (owner.isPlayer) { G.stats.hits += 1; G.stats.shots += 1; }
+  } else if (owner.isPlayer) { G.stats.shots += 1; }
+}
+
+/* ------------------------------------------------------- intersections */
+function raySphere(o, d, c, r) {
+  const m = vsub(o, c);
+  const b = vdot(m, d), cc = vlen2(m) - r * r;
+  if (cc > 0 && b > 0) return null;
+  const disc = b * b - cc;
+  if (disc < 0) return null;
+  let t = -b - Math.sqrt(disc);
+  if (t < 0) t = 0;
+  return t;
+}
+function segSphere(p0, p1, c, r) {
+  const d = vsub(p1, p0), L = vlen(d);
+  if (L < 1e-6) return vdist2(p0, c) <= r * r ? 0 : null;
+  const t = raySphere(p0, vmul(d, 1 / L), c, r);
+  if (t === null || t > L) return null;
+  return t / L;
+}
+
+/* --------------------------------------------------------------- flight */
+function integrateShip(s, dt) {
+  if (s.stun > 0) { s.stun -= dt; }
+  const stunned = s.stun > 0;
+  const thr = stunned ? 0 : s.throttle;
+  const boostK = s.boosting ? (s.boostMul || 1.8) : 1;
+  const maxV = s.speed * boostK;
+  const desired = vmul(qfwd(s.q), maxV * thr);
+  if (s.assistOff) {
+    vaddi(s.vel, qfwd(s.q), s.accel * dt * thr * boostK);
+    s.vel = vclampLen(s.vel, s.speed * 2.2);
+  } else {
+    const k = clamp(s.accel * dt / 22, 0, 1);
+    s.vel = vlerp(s.vel, desired, k);
+  }
+  vaddi(s.pos, s.vel, dt);
+
+  // shield regen
+  s.shTimer += dt;
+  if (s.shTimer > s.delay && s.shield < s.shieldMax) {
+    s.shield = Math.min(s.shieldMax, s.shield + s.regen * dt * (s.regenBuff || 1));
+  }
+  if (s.hullRegen && s.hull < s.hullMax * 0.6 && s.shTimer > 3)
+    s.hull = Math.min(s.hullMax, s.hull + s.hullRegen * dt);
+  if (s.flash > 0) s.flash = Math.max(0, s.flash - dt * 3.2);
+  if (s.heat > 0 && !s.firing) s.heat = Math.max(0, s.heat - dt * 0.42);
+  if (s.over && s.heat < 0.32) s.over = false;
+
+  // arena containment
+  const R = G.map.radius;
+  const d2 = vlen2(s.pos);
+  if (d2 > R * R) {
+    const n = vnorm(s.pos);
+    s.pos = vmul(n, R);
+    const vn = vdot(s.vel, n);
+    if (vn > 0) vaddi(s.vel, n, -vn * 1.6);
+    if (s.isPlayer) hudWarn('RETURN TO COMBAT ZONE');
+  }
+  // rock collision
+  for (const r of G.rocks) {
+    const rr = r.radius + s.radius;
+    if (vdist2(s.pos, r.pos) < rr * rr) {
+      const n = vnorm(vsub(s.pos, r.pos));
+      s.pos = vadd(r.pos, vmul(n, rr));
+      const vn = vdot(s.vel, n);
+      if (vn < 0) {
+        vaddi(s.vel, n, -vn * 1.4);
+        damage(s, Math.min(28, Math.abs(vn) * 0.55), null, 'collision');
+        hitSpark(s.pos, [255, 200, 140], 6);
+        if (s.isPlayer) CAM.shake = Math.max(CAM.shake, 0.5);
+      }
+    }
+  }
+}
+
+/* ------------------------------------------------------------------- AI */
+function aiTargets(s) {
+  let best = null, bd = 1e9;
+  for (const o of G.ships) {
+    if (!o.alive || o.team === s.team) continue;
+    let d = vdist2(s.pos, o.pos);
+    if (o.kind === 'freight') {
+      // capital ships hunt strike craft — their broadsides would erase the convoy
+      if (s.boss) continue;
+      // only designated strike elements press the convoy, and never more than four
+      if (!s.ai || s.ai.role !== 'obj') continue;
+      if (s.target !== o) {
+        let atk = 0;
+        for (const x of G.ships) if (x.alive && x.team === s.team && x.target === o) atk++;
+        if (atk >= 4) continue;
+      }
+      d *= 0.7;
+    }
+    if (o.boss) d *= 0.55;                       // prioritise capital ships
+    if (o.isPlayer) d *= 0.7;
+    if (d < bd) { bd = d; best = o; }
+  }
+  return best;
+}
+
+/* where should this ship be, objectively speaking? */
+function objectivePos(s) {
+  const m = G.mode;
+  if (!s.ai || s.ai.role !== 'obj') return null;
+  if (m.id === 'beacon') {
+    let best = null, bd = 1e9;
+    for (const b of G.beacons) {
+      const d = vdist2(s.pos, b.pos) * (b.own === s.team ? 2.4 : 1);
+      if (d < bd) { bd = d; best = b; }
+    }
+    return best ? { pos: best.pos, rad: 80 } : null;
+  }
+  if (m.id === 'escort' && G.freighter && G.freighter.alive) {
+    if (s.team === 'a') return { pos: G.freighter.pos, rad: 170 };
+    // enemies only close on the convoy if they were actually assigned to it
+    if (s.target === G.freighter) return { pos: G.freighter.pos, rad: 300 };
+    return null;
+  }
+  return null;
+}
+
+function updateAI(s, dt) {
+  const a = s.ai;
+  a.tCd -= dt;
+  if (!s.target || !s.target.alive || a.tCd <= 0) { s.target = aiTargets(s); a.tCd = rnd(1.6, 3.4); }
+  const tgt = s.target;
+  a.wob += dt * 0.7;
+
+  // ---- freighter: follow the escort waypoints -------------------------
+  if (s.kind === 'freight') {
+    const wp = G.waypoints[G.wpIdx] || G.waypoints[G.waypoints.length - 1] || V();
+    const to = vsub(wp, s.pos);
+    const d = vlen(to);
+    s.q = qTurnToward(s.q, vnorm(to), s.turn * dt);
+    // a dreadnought on the lane forces the convoy to hold back
+    const blocked = G.boss && G.boss.alive && vdist(s.pos, G.boss.pos) < 700;
+    s.throttle = d < 90 ? 0.12 : blocked ? 0.3 : 1;
+    return;
+  }
+
+  let dir, dist = 1e9;
+  if (tgt) {
+    dist = vdist(s.pos, tgt.pos);
+    const lead = leadPoint(s.pos, tgt.pos, tgt.vel, s.gun.spd) || tgt.pos;
+    const aimP = vlerp(tgt.pos, lead, a.skill);
+    dir = vnorm(vsub(aimP, s.pos));
+  } else {
+    if (vdist2(s.pos, a.roam) < 90 * 90) a.roam = vrandSphere(G.map.radius * 0.7);
+    dir = vnorm(vsub(a.roam, s.pos));
+  }
+
+  // ---- state machine --------------------------------------------------
+  const minR = s.boss ? 0 : (s.elite ? 55 : 70);
+  if (a.evade > 0) {
+    a.evade -= dt;
+    dir = vnorm(vadd(dir, vmul(qright(s.q), Math.sin(a.wob * 2.4) * 1.9)));
+    dir = vnorm(vadd(dir, vmul(qup(s.q), Math.cos(a.wob * 1.7) * 1.2)));
+    s.throttle = 1;
+  } else if (tgt && dist < minR) {
+    a.evade = rnd(1.1, 2.4);
+  } else {
+    // gentle weave so dogfights aren't perfectly predictable
+    const w = (1 - a.skill) * 0.5 + 0.12;
+    dir = vnorm(vadd(dir, vmul(qright(s.q), Math.sin(a.wob * 1.3) * w)));
+    dir = vnorm(vadd(dir, vmul(qup(s.q), Math.cos(a.wob * 0.9) * w * 0.7)));
+    s.throttle = dist > 260 ? 1 : dist < 130 ? 0.55 : 0.82;
+  }
+
+  // ---- objective pull -------------------------------------------------
+  const obj = objectivePos(s);
+  if (obj) {
+    const dObj = vdist(s.pos, obj.pos);
+    const engaged = tgt && dist < 300;
+    if (dObj > obj.rad * 1.6 || (!engaged && dObj > obj.rad)) {
+      dir = vnorm(vsub(obj.pos, s.pos));
+      s.throttle = 1;
+      a.evade = 0;
+    } else if (dObj < obj.rad * 0.45 && !engaged) {
+      // loiter on station rather than drifting straight out the far side
+      dir = vnorm(vadd(qright(s.q), vmul(vnorm(vsub(obj.pos, s.pos)), 0.55)));
+      s.throttle = 0.45;
+    }
+  }
+
+  // ---- obstacle avoidance --------------------------------------------
+  const fwd = qfwd(s.q);
+  for (const r of G.rocks) {
+    const rel = vsub(r.pos, s.pos);
+    const fd = vdot(rel, fwd);
+    if (fd < 0 || fd > 200) continue;
+    const perp = vsub(rel, vmul(fwd, fd));
+    const pr = vlen(perp);
+    if (pr < r.radius + s.radius * 2.4) {
+      const away = pr > 1e-3 ? vmul(perp, -1 / pr) : qright(s.q);
+      dir = vnorm(vadd(dir, vmul(away, 1.9 * (1 - fd / 200))));
+    }
+  }
+
+  s.q = qTurnToward(s.q, dir, s.turn * dt * (s.stun > 0 ? 0.2 : 1));
+
+  // ---- shooting -------------------------------------------------------
+  s.cool -= dt; s.missileCd -= dt;
+  if (tgt && s.gun.rof > 0 && s.stun <= 0) {
+    const nf = qfwd(s.q);
+    const toT = vnorm(vsub(tgt.pos, s.pos));
+    const align = vdot(nf, toT);
+    const coneOK = align > (s.boss ? 0.82 : 0.985 - (1 - a.skill) * 0.02);
+    if (coneOK && dist < s.gun.range && s.cool <= 0) {
+      const lead = leadPoint(s.pos, tgt.pos, tgt.vel, s.gun.spd) || tgt.pos;
+      let d = vnorm(vsub(lead, s.pos));
+      const err = (1 - a.skill) * 0.05;
+      d = vnorm(vadd(d, vmul(vrandUnit(), err)));
+      if (s.boss) {
+        const guns = s.mesh.gun;
+        for (let i = 0; i < guns.length; i++) {
+          if (Math.random() > 0.55) continue;
+          const mp = vadd(s.pos, qrot(s.q, vmul(guns[i], s.scale)));
+          let dd = leadPoint(mp, tgt.pos, tgt.vel, s.gun.spd);
+          dd = dd ? vnorm(vsub(dd, mp)) : d;
+          dd = vnorm(vadd(dd, vmul(vrandUnit(), 0.02)));
+          G.bullets.push({ pos: mp, prev: vcopy(mp), vel: vmul(dd, s.gun.spd), life: 3,
+            dmg: s.gun.dmg, team: s.team, owner: s, col: s.gun.col, glow:[255,220,190],
+            len: 16, wid: 3.4, splash: 8, splashDmg: 10 });
+        }
+        s.cool = 1 / s.gun.rof;
+      } else {
+        const mp = vadd(s.pos, vmul(nf, s.radius * 0.9));
+        G.bullets.push({ pos: mp, prev: vcopy(mp), vel: vadd(vmul(d, s.gun.spd), vmul(s.vel, 0.3)),
+          life: 2.2, dmg: s.gun.dmg, team: s.team, owner: s, col: s.gun.col,
+          glow: [255, 235, 210], len: 8, wid: 1.5, splash: 0, splashDmg: 0 });
+        s.cool = (1 / s.gun.rof) * rnd(0.9, 1.15) / a.agg;
+      }
+    }
+    // NPC missiles
+    if (s.missileAmmo > 0 && s.missileCd <= 0 && dist < 700 && align > 0.9) {
+      const w = { kind:'missile', salvo: s.boss ? 4 : 2, spd: 150, accel: 110, turn: 1.9,
+                  life: 7, dmg: s.boss ? 42 : 26, splash: 14, splashDmg: 16, col:[255,180,120] };
+      fireMissile(s, w, tgt, 1);
+      s.missileCd = s.boss ? rnd(5, 8) : rnd(7, 12);
+      if (tgt.isPlayer) hudWarn('MISSILE INBOUND');
+    }
+  }
+}
+
+/* --------------------------------------------------- projectile stepping */
+function stepBullets(dt) {
+  for (let i = G.bullets.length - 1; i >= 0; i--) {
+    const b = G.bullets[i];
+    b.prev = vcopy(b.pos);
+    vaddi(b.pos, b.vel, dt);
+    b.life -= dt;
+    let hit = null, hitT = 2, hp = null;
+    for (const s of G.ships) {
+      if (!s.alive || s.team === b.team || s === b.owner) continue;
+      const t = segSphere(b.prev, b.pos, s.pos, s.radius * 1.05);
+      if (t !== null && t < hitT) { hitT = t; hit = s; }
+    }
+    for (const r of G.rocks) {
+      const t = segSphere(b.prev, b.pos, r.pos, r.radius);
+      if (t !== null && t < hitT) { hitT = t; hit = r; }
+    }
+    if (hit) {
+      hp = vlerp(b.prev, b.pos, hitT);
+      if (hit.hull !== undefined) {
+        damage(hit, b.dmg, b.owner, 'bolt');
+        if (b.owner && b.owner.isPlayer) G.stats.hits++;
+      }
+      if (b.splash > 0) splashDamage(hp, b.splash, b.splashDmg, b.team, b.owner);
+      hitSpark(hp, b.glow, b.splash ? 12 : 5);
+      if (b.splash > 0) G.fx.push({ kind:'blast', pos: hp, t:0, life:0.32, rad: b.splash * 1.6,
+        col: b.glow, power: 0.5 });
+      G.bullets.splice(i, 1); continue;
+    }
+    if (b.life <= 0) G.bullets.splice(i, 1);
+  }
+}
+
+function splashDamage(p, rad, dmg, team, owner) {
+  for (const s of G.ships) {
+    if (!s.alive || s.team === team) continue;
+    const d = vdist(s.pos, p) - s.radius;
+    if (d < rad) damage(s, dmg * (1 - clamp(d / rad, 0, 1)), owner, 'splash');
+  }
+}
+
+function stepMissiles(dt) {
+  for (let i = G.missiles.length - 1; i >= 0; i--) {
+    const m = G.missiles[i];
+    m.life -= dt; m.arm -= dt;
+    if (m.target && !m.target.alive) m.target = null;
+    if (m.target && m.turn > 0 && m.arm <= 0) {
+      const lead = leadPoint(m.pos, m.target.pos, m.target.vel, Math.max(vlen(m.vel), 40)) || m.target.pos;
+      m.q = qTurnToward(m.q, vnorm(vsub(lead, m.pos)), m.turn * dt);
+    }
+    const f = qfwd(m.q);
+    const cur = vlen(m.vel);
+    m.vel = vmul(f, Math.min(m.maxSpd, cur + m.accel * dt));
+    const prev = vcopy(m.pos);
+    vaddi(m.pos, m.vel, dt);
+
+    let hit = null, hitT = 2;
+    for (const s of G.ships) {
+      if (!s.alive || s.team === m.team) continue;
+      const t = segSphere(prev, m.pos, s.pos, s.radius * 1.1);
+      if (t !== null && t < hitT) { hitT = t; hit = s; }
+    }
+    if (!hit) for (const r of G.rocks) {
+      const t = segSphere(prev, m.pos, r.pos, r.radius);
+      if (t !== null && t < hitT) { hitT = t; hit = r; }
+    }
+    if (hit || m.life <= 0) {
+      const p = hit ? vlerp(prev, m.pos, hitT) : m.pos;
+      if (hit && hit.hull !== undefined) {
+        damage(hit, m.dmg, m.owner, 'missile');
+        if (m.owner && m.owner.isPlayer) G.stats.hits++;
+      }
+      splashDamage(p, m.splash, m.splashDmg, m.team, m.owner);
+      explode(p, m.splash * 0.9, m.col, 0.7);
+      if (G.player && vdist(p, G.player.pos) < m.splash * 2)
+        CAM.shake = Math.max(CAM.shake, 0.6);
+      G.missiles.splice(i, 1);
+      continue;
+    }
+    // exhaust trail
+    if (Math.random() < dt * 60)
+      G.fx.push({ kind:'smoke', pos: vcopy(m.pos), t:0, life: 0.55,
+        vel: vmul(f, -6), col: m.col, sz: 0.55 });
+  }
+}
+
+function stepFx(dt) {
+  for (let i = G.fx.length - 1; i >= 0; i--) {
+    const f = G.fx[i];
+    f.t += dt;
+    if (f.t >= f.life) { G.fx.splice(i, 1); continue; }
+    if (f.vel) { vaddi(f.pos, f.vel, dt); f.vel = vmul(f.vel, 1 - 0.9 * dt); }
+    if (f.spin) f.q = qnorm(qmul(f.q, qaxis(vnorm(f.spin), vlen(f.spin) * dt)));
+  }
+  for (let i = G.beams.length - 1; i >= 0; i--) {
+    G.beams[i].life -= dt;
+    if (G.beams[i].life <= 0) G.beams.splice(i, 1);
+  }
+}
+/* =========================================================================
+   SPACESHIP SENSATION — 6. PLAYER, MATCH SETUP, MODES
+   ========================================================================= */
+const INPUT = {
+  aim:V(0,0,0), keys:{}, lmb:false, rmb:false, locked:false, sens:0.0022,
+  autoCenter:0.9, invert:false, fcs:true
+};
+
+/* ---------------------------------------------------------- fire control
+   Holding a target inside the acquisition cone spins up the gun director.
+   Once locked, the turrets traverse onto the firing solution by themselves —
+   but the servos and capacitors run far hotter for it.                     */
+const FCS_TIME     = 0.75;    // seconds to acquire
+const FCS_TRAVERSE = 0.17;    // ~10° of mechanical gun traverse
+const FCS_RANGE    = 1000;
+const FCS_CONE     = 0.90;    // dot product; roughly 25° half-angle
+const FCS_HEAT     = 2.7;     // heat multiplier at full gun traverse
+const FCS_HEAT_BEAM= 2.1;     // beams gain less from it, so they are taxed less
+const FCS_HEAT_MIN = 1.5;     // floor: the director always costs something to run
+
+/* velocity of the target relative to the muzzle — bullets inherit 35% of
+   ship velocity (see fireBolt), so the solution must account for that */
+function relTargetVel(p, t) { return vsub(t.vel, vmul(p.vel, 0.35)); }
+
+/* where are the guns actually pointing this frame? */
+function playerAimDir(p) {
+  const fwd = qfwd(p.q);
+  const t = p.target;
+  if (!INPUT.fcs || p.gunLock < 1 || !t || !t.alive) return { dir: fwd, fcs: false };
+  let want;
+  if (p.prim.kind === 'beam') {
+    want = vnorm(vsub(t.pos, p.pos));                 // hitscan needs no lead
+  } else {
+    const lead = leadPoint(p.pos, t.pos, relTargetVel(p, t), p.prim.spd);
+    want = vnorm(vsub(lead || t.pos, p.pos));
+  }
+  const ang = Math.acos(clamp(vdot(fwd, want), -1, 1));
+  // `load` is how hard the servos are working — it drives the heat penalty, so
+  // you only pay full price when the director is genuinely correcting your aim
+  const load = clamp(ang / FCS_TRAVERSE, 0, 1);
+  if (ang <= FCS_TRAVERSE) return { dir: want, fcs: true, solved: true, load: load };
+  // beyond the traverse limit the guns simply slew as far as they mechanically can
+  const ax = vcross(fwd, want);
+  if (vlen(ax) < 1e-6) return { dir: fwd, fcs: true, solved: false, load: 1 };
+  return { dir: qrot(qaxis(vnorm(ax), FCS_TRAVERSE), fwd), fcs: true, solved: false, load: 1 };
+}
+document.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  INPUT.keys[k] = true;
+  if (k === 'escape') { if (G.on && !G.over) togglePause(); }
+  if (!G.on || G.paused) return;
+  if (k === 'tab' || k === 'q') { e.preventDefault(); cycleTarget(1); }
+  if (k === 'e') { nearestThreat(); }
+  if (k === 'x') { const p = G.player; if (p) { p.assistOff = !p.assistOff;
+      hudWarn(p.assistOff ? 'FLIGHT ASSIST OFF' : 'FLIGHT ASSIST ON'); } }
+  if (k === 'f') { INPUT.fcs = !INPUT.fcs;
+      hudWarn(INPUT.fcs ? 'FIRE CONTROL ENABLED' : 'FIRE CONTROL DISABLED');
+      if (G.player) G.player.gunLock = 0; }
+  if (k === ' ') e.preventDefault();
+});
+document.addEventListener('keyup', e => { INPUT.keys[e.key.toLowerCase()] = false; });
+mainCvs.addEventListener('mousedown', e => {
+  if (!G.on || G.paused) return;
+  if (!INPUT.locked && mainCvs.requestPointerLock) { mainCvs.requestPointerLock(); }
+  if (e.button === 0) INPUT.lmb = true;
+  if (e.button === 2) INPUT.rmb = true;
+});
+document.addEventListener('mouseup', e => {
+  if (e.button === 0) INPUT.lmb = false;
+  if (e.button === 2) INPUT.rmb = false;
+});
+mainCvs.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('pointerlockchange', () => {
+  INPUT.locked = (document.pointerLockElement === mainCvs);
+});
+document.addEventListener('mousemove', e => {
+  if (!G.on || G.paused) return;
+  if (INPUT.locked) {
+    INPUT.aim.x = clamp(INPUT.aim.x + e.movementX * INPUT.sens, -1, 1);
+    INPUT.aim.y = clamp(INPUT.aim.y + e.movementY * INPUT.sens * (INPUT.invert ? -1 : 1), -1, 1);
+  } else {
+    INPUT.aim.x = clamp((e.clientX - mainVW / 2) / (mainVH * 0.42), -1, 1);
+    INPUT.aim.y = clamp((e.clientY - mainVH / 2) / (mainVH * 0.42), -1, 1);
+  }
+});
+
+/* -------------------------------------------------------------- loadout */
+const LOADOUT = { ship:'vanguard', prim:'pulse', sec:'seeker', mod:'standard',
+                  mode:'tdm', map:'belt', diff:'veteran' };
+
+function statsFor(shipDef, modDef) {
+  const m = modDef.mods || {};
+  return {
+    hull: shipDef.hull * (m.hull || 1),
+    shield: shipDef.shield * (m.shield || 1),
+    regen: shipDef.regen * (m.regen || 1),
+    delay: shipDef.delay * (m.delay || 1),
+    speed: shipDef.speed * (m.speed || 1),
+    turn: shipDef.turn * (m.turn || 1),
+    accel: shipDef.accel * (m.accel || 1),
+    boost: shipDef.boost,
+    boostPool: 100 * (m.boostPool || 1),
+    dmg: (m.dmg || 1),
+    spread: (m.spread || 1),
+    lock: (m.lock || 1),
+    hullRegen: (m.hullRegen || 0)
+  };
+}
+
+function makePlayer() {
+  const sd = SHIPS.find(s => s.id === LOADOUT.ship);
+  const md = MODULES.find(s => s.id === LOADOUT.mod);
+  const st = statsFor(sd, md);
+  const p = makeShip({
+    team:'a', kind:'player', name:'YOU', isPlayer:true,
+    pos: V(0, 0, -260), q: qLookAt(V(0,0,1), V(0,1,0)),
+    hull: st.hull, shield: st.shield, regen: st.regen, delay: st.delay,
+    speed: st.speed, turn: st.turn, accel: st.accel,
+    mesh: MESH['ship_' + sd.id], radius: sd.geom.len * 0.85 + 1.2,
+    hullRegen: st.hullRegen
+  });
+  p.def = sd; p.st = st;
+  p.boostMul = sd.boost; p.boostPool = st.boostPool; p.boostMax = st.boostPool;
+  p.perk = sd.perk || null;
+  p.dmgMul = st.dmg; p.spreadMul = st.spread; p.lockMul = st.lock;
+  p.prim = PRIMARY.find(w => w.id === LOADOUT.prim);
+  p.sec  = SECONDARY.find(w => w.id === LOADOUT.sec);
+  p.ammo = p.sec.ammo; p.secCd = 0; p.lockT = 0;
+  p.gunLock = 0; p.aimDir = qfwd(p.q); p.fcsOn = false; p.fcsSolved = false;
+  p.throttle = 0.7; p.assistOff = false;
+  G.player = p;
+  return p;
+}
+
+function schedulePlayerRespawn() {
+  G.respawnT = 3.2;
+  hudBig('DESTROYED', 'RESPAWNING…');
+}
+function respawnPlayer() {
+  const p = G.player;
+  const st = p.st;
+  p.alive = true;
+  p.hull = st.hull; p.shield = st.shield; p.shTimer = 99;
+  p.heat = 0; p.over = false; p.stun = 0; p.boostPool = p.boostMax;
+  p.ammo = p.sec.ammo; p.gunLock = 0; p.fcsOn = false;
+  const a = rnd(0, TAU);
+  p.pos = V(Math.cos(a) * G.map.radius * 0.55, rnd(-120, 120), Math.sin(a) * G.map.radius * 0.55);
+  p.q = qLookAt(vnorm(vmul(p.pos, -1)), V(0, 1, 0));
+  p.vel = vmul(qfwd(p.q), p.speed * 0.6);
+  p.target = null;
+  INPUT.aim.x = INPUT.aim.y = 0;
+  hudBig('', '');
+}
+
+/* --------------------------------------------------------- targeting */
+function enemyList() {
+  return G.ships.filter(s => s.alive && s.team !== 'a' && !s.noTarget);
+}
+function cycleTarget(dir) {
+  const p = G.player; if (!p) return;
+  const list = enemyList().sort((a, b) => vdist2(p.pos, a.pos) - vdist2(p.pos, b.pos));
+  if (!list.length) { p.target = null; return; }
+  let i = list.indexOf(p.target);
+  i = (i + dir + list.length + (i < 0 ? 1 : 0)) % list.length;
+  p.target = list[i];
+  p.lockT = 0;
+}
+function nearestThreat() {
+  const p = G.player; if (!p) return;
+  let best = null, bs = -1e9;
+  for (const s of enemyList()) {
+    const d = vdist(p.pos, s.pos);
+    const align = vdot(qfwd(p.q), vnorm(vsub(s.pos, p.pos)));
+    const sc = align * 700 - d;
+    if (sc > bs) { bs = sc; best = s; }
+  }
+  p.target = best; p.lockT = 0;
+}
+function autoTarget() {
+  const p = G.player;
+  if (p.target && p.target.alive) return;
+  nearestThreat();
+}
+
+/* --------------------------------------------------------- player tick */
+function updatePlayer(dt) {
+  const p = G.player;
+  if (!p) return;
+  if (!p.alive) {
+    G.respawnT -= dt;
+    if (G.respawnT <= 0) respawnPlayer();
+    return;
+  }
+  const K = INPUT.keys;
+  // throttle
+  if (K['w']) p.throttle = clamp(p.throttle + dt * 0.85, 0, 1);
+  if (K['s']) p.throttle = clamp(p.throttle - dt * 0.85, 0, 1);
+  // boost
+  const wantBoost = !!K['shift'] && p.boostPool > 1;
+  p.boosting = wantBoost;
+  if (wantBoost) { p.boostPool = Math.max(0, p.boostPool - dt * 26); p.throttle = 1; }
+  else p.boostPool = Math.min(p.boostMax, p.boostPool + dt * 13);
+
+  // rotation from the virtual stick
+  const t = p.turn * (p.stun > 0 ? 0.15 : 1);
+  const ax = INPUT.aim.x, ay = INPUT.aim.y;
+  const pitch = ay * ay * sign(ay) * t * dt * 1.35;
+  const yaw   = ax * ax * sign(ax) * t * dt * 1.15;
+  let roll = 0;
+  if (K['a']) roll += 1; if (K['d']) roll -= 1;
+  roll *= t * dt * 1.75;
+  let q = p.q;
+  q = qmul(q, qaxis(V(1,0,0), pitch));
+  q = qmul(q, qaxis(V(0,1,0), yaw));
+  q = qmul(q, qaxis(V(0,0,1), roll));
+  p.q = qnorm(q);
+  // gentle stick self-centering keeps the ship from spiralling when idle
+  const ac = 1 - Math.exp(-INPUT.autoCenter * dt);
+  if (INPUT.locked) { INPUT.aim.x -= INPUT.aim.x * ac * 0.5; INPUT.aim.y -= INPUT.aim.y * ac * 0.5; }
+
+  autoTarget();
+
+  // ---- gun director ---------------------------------------------------
+  const gt = p.target;
+  if (INPUT.fcs && gt && gt.alive && p.stun <= 0) {
+    const gd = vdist(p.pos, gt.pos);
+    const ga = vdot(qfwd(p.q), vnorm(vsub(gt.pos, p.pos)));
+    if (ga > FCS_CONE && gd < FCS_RANGE) {
+      const was = p.gunLock;
+      p.gunLock = Math.min(1, p.gunLock + dt / FCS_TIME);
+      if (was < 1 && p.gunLock >= 1) hudWarn('FIRE CONTROL LOCK');
+    } else p.gunLock = Math.max(0, p.gunLock - dt * 1.8);
+  } else p.gunLock = Math.max(0, p.gunLock - dt * 2.6);
+
+  // ---- primary --------------------------------------------------------
+  p.cool -= dt; p.secCd -= dt;
+  // heat sinks only recover once the trigger is released — holding it between
+  // individual shots must not count as cooling time
+  p.firing = INPUT.lmb && !p.over && p.stun <= 0;
+  const w = p.prim;
+  const aim = playerAimDir(p);
+  p.aimDir = aim.dir; p.fcsOn = aim.fcs; p.fcsSolved = !!aim.solved;
+  // the director buys accuracy with waste heat, in proportion to the work it does
+  const hm = aim.fcs
+    ? lerp(FCS_HEAT_MIN, w.kind === 'beam' ? FCS_HEAT_BEAM : FCS_HEAT, aim.load || 0)
+    : 1;
+  p.fcsHeatMul = hm;
+  if (p.firing) {
+    if (w.kind === 'beam') {
+      fireBeam(p, w, dt, p.dmgMul, aim.fcs ? aim.dir : null);
+      p.heat += w.heat * dt * hm;
+      CAM.shake = Math.max(CAM.shake, 0.06);
+    } else if (p.cool <= 0) {
+      fireBolt(p, w, aim.fcs ? aim.dir : null, null, p.dmgMul);
+      p.cool = 1 / w.rof;
+      p.heat += w.heat * hm;
+      CAM.shake = Math.max(CAM.shake, w.dmg > 20 ? 0.22 : 0.07);
+    }
+  }
+  if (p.heat >= 1) {
+    p.heat = 1; p.over = true; p.gunLock = 0;
+    hudWarn(p.fcsOn ? 'DIRECTOR OVERHEAT — GUNS OFFLINE' : 'WEAPONS OVERHEATED');
+  }
+
+  // ---- missile lock ---------------------------------------------------
+  const sw = p.sec;
+  if (p.target && p.target.alive) {
+    const d = vdist(p.pos, p.target.pos);
+    const al = vdot(qfwd(p.q), vnorm(vsub(p.target.pos, p.pos)));
+    if (al > 0.9 && d < 1000) p.lockT += dt / (p.lockMul || 1);
+    else p.lockT = Math.max(0, p.lockT - dt * 2);
+  } else p.lockT = 0;
+  const lockReady = !sw.lock || p.lockT >= sw.lock;
+
+  // ---- secondary ------------------------------------------------------
+  if ((INPUT.rmb || K[' ']) && p.secCd <= 0 && p.ammo > 0 && p.stun <= 0) {
+    if (sw.kind === 'missile') {
+      if (p.target && lockReady) {
+        fireMissile(p, sw, p.target, p.dmgMul);
+        p.ammo--; p.secCd = sw.cd; p.lockT = 0;
+      }
+    } else if (sw.kind === 'torp') {
+      fireMissile(p, sw, null, p.dmgMul);
+      p.ammo--; p.secCd = sw.cd; CAM.shake = Math.max(CAM.shake, 0.3);
+    } else if (sw.kind === 'emp') {
+      empBurst(p, sw); p.ammo--; p.secCd = sw.cd;
+    } else if (sw.kind === 'drone') {
+      deployDrones(p, sw); p.ammo--; p.secCd = sw.cd;
+    }
+  }
+  // slow ammo trickle so you are never fully dry
+  p._ammoT = (p._ammoT || 0) + dt;
+  if (p._ammoT > 14 && p.ammo < sw.ammo) { p.ammo++; p._ammoT = 0; }
+
+  // Nomad command aura
+  if (p.perk === 'aura') {
+    for (const s of G.ships) {
+      if (s.team !== 'a' || s === p || !s.alive) continue;
+      const near = vdist2(s.pos, p.pos) < 260 * 260;
+      s.regenBuff = near ? 1.4 : 1;
+      if (s.gun) s.gun.dmg = s.gun.dmgBase === undefined
+        ? (s.gun.dmgBase = s.gun.dmg, s.gun.dmg) : s.gun.dmgBase * (near ? 1.25 : 1);
+    }
+  }
+}
+
+/* ------------------------------------------------------------- camera */
+function updateCamera(dt) {
+  const p = G.player;
+  if (!p) return;
+  const back = 12 + p.radius * 1.3 + (p.boosting ? 3.2 : 0);
+  const up = 3.0 + p.radius * 0.22;
+  const want = vadd(p.pos, qrot(p.q, V(0, up, -back)));
+  const k = 1 - Math.exp(-(p.alive ? 11 : 3) * dt);
+  CAM.pos = vlerp(CAM.pos, want, k);
+  CAM.q = qslerp(CAM.q, p.q, 1 - Math.exp(-16 * dt));
+  if (CAM.shake > 0) {
+    CAM.shake = Math.max(0, CAM.shake - dt * 2.4);
+    const s = CAM.shake * CAM.shake * 0.9;
+    CAM.pos = vadd(CAM.pos, vmul(vrandUnit(), s));
+    CAM.q = qmul(CAM.q, qaxis(vrandUnit(), s * 0.02));
+  }
+  camUpdateBasis();
+}
+
+/* ---------------------------------------------------------- world build */
+function buildMap(map) {
+  G.rocks = [];
+  ENV.fog = map.fog.slice(); ENV.fogNear = map.fogNear; ENV.fogFar = map.fogFar;
+  ENV.sky = map.sky.slice(); ENV.sun = vnorm(V(map.sun[0], map.sun[1], map.sun[2]));
+  ENV.amb = map.id === 'nebula' ? 0.42 : map.id === 'forge' ? 0.34 : 0.28;
+  buildStars(map.starN, map.star);
+  for (let i = 0; i < 8; i++)
+    MESH['rock' + i] = mkRock(1000 + i * 77 + map.id.charCodeAt(0), 1, map.rocks.jag, map.rocks.pal);
+  for (let i = 0; i < 4; i++)
+    MESH['wreck' + i] = mkWreck(500 + i * 131, [104, 116, 122]);
+
+  const R = map.radius;
+  for (let i = 0; i < map.rocks.n; i++) {
+    let p, tries = 0;
+    do { p = vrandSphere(R * 0.92); tries++; } while (vlen(p) < 300 && tries < 30);
+    const rad = rnd(map.rocks.min, map.rocks.max);
+    G.rocks.push({ pos: p, q: qnorm(Q(rnd(-1,1),rnd(-1,1),rnd(-1,1),rnd(-1,1))),
+      spin: vmul(vrandUnit(), rnd(0.03, 0.22)), radius: rad,
+      mesh: MESH['rock' + (i % 8)], scale: rad });
+  }
+  for (let i = 0; i < (map.wrecks || 0); i++) {
+    let p, tries = 0;
+    do { p = vrandSphere(R * 0.9); tries++; } while (vlen(p) < 360 && tries < 30);
+    const sc = rnd(4, 13);
+    G.rocks.push({ pos: p, q: qnorm(Q(rnd(-1,1),rnd(-1,1),rnd(-1,1),rnd(-1,1))),
+      spin: vmul(vrandUnit(), rnd(0.01, 0.06)), radius: sc * 3.1,
+      mesh: MESH['wreck' + (i % 4)], scale: sc, wreck: true });
+  }
+  G.clouds = [];
+  for (let i = 0; i < (map.clouds || 0); i++)
+    G.clouds.push({ pos: vrandSphere(R * 0.8), r: rnd(160, 420),
+      c: pick([[150,60,190],[90,50,180],[200,70,150]]), a: rnd(0.05, 0.16) });
+}
+
+function edgeSpawn(team) {
+  const a = rnd(0, TAU), b = rnd(-0.5, 0.5);
+  const R = G.map.radius * 0.78;
+  const s = team === 'a' ? -1 : 1;
+  return V(Math.cos(a) * R * 0.6 * s, Math.sin(b) * R * 0.35, Math.sin(a) * R * 0.6 * s + s * R * 0.4);
+}
+
+/* ------------------------------------------------------------ start match */
+function startMatch() {
+  G.ships = []; G.bullets = []; G.missiles = []; G.fx = []; G.beams = [];
+  G.beacons = []; G.feed = []; G.nextId = 1;
+  G.scoreA = 0; G.scoreB = 0; G.t = 0; G.elapsed = 0; G.over = false; G.result = null;
+  G.stats = { kills:0, deaths:0, dmgOut:0, shots:0, hits:0, obj:0, credits:0 };
+  G.spawnT = 4; G.bossIdx = 0; G.wpIdx = 0; G.respawnT = 0;
+  G.bossKills = 0; G.bossRespawn = 0; G.boss = null;
+  G.mode = MODES.find(m => m.id === LOADOUT.mode);
+  G.map  = MAPS.find(m => m.id === LOADOUT.map);
+  G.diff = DIFFS.find(d => d.id === LOADOUT.diff);
+  G.limit = G.mode.limit || 0;
+
+  buildMap(G.map);
+  const p = makePlayer();
+  p.pos = V(0, 0, -G.map.radius * 0.42);
+  p.q = qLookAt(V(0, 0, 1), V(0, 1, 0));
+  p.vel = vmul(qfwd(p.q), p.speed * 0.6);
+  CAM.pos = vadd(p.pos, qrot(p.q, V(0, 4, -16)));
+  CAM.q = p.q; camUpdateBasis();
+
+  // allies
+  for (let i = 0; i < G.mode.allies; i++) {
+    const off = V((i % 2 ? 1 : -1) * (18 + i * 9), (i % 3 - 1) * 7, -12 - i * 8);
+    spawnNPC(i % 2 ? 'wingman2' : 'wingman', 'a', vadd(p.pos, off), p.q);
+  }
+  // enemies
+  const foeCount = G.mode.foes + (G.diff.id === 'ace' ? 2 : G.diff.id === 'veteran' ? 1 : 0);
+  for (let i = 0; i < foeCount; i++) spawnNPC(rollFoe(), 'b', edgeSpawn('b'));
+
+  if (G.mode.id === 'beacon') {
+    const R = G.map.radius * 0.42;
+    for (let i = 0; i < G.mode.beacons; i++) {
+      const a = i / G.mode.beacons * TAU;
+      G.beacons.push({ pos: V(Math.cos(a) * R, (i - 1) * 60, Math.sin(a) * R),
+        own:'n', prog:0, rad:110, name:'BEACON ' + String.fromCharCode(65 + i), spin: 0 });
+    }
+  }
+  if (G.mode.id === 'escort') {
+    const R = G.map.radius * 0.58;
+    G.waypoints = [ V(0, 40, 0), V(R * 0.8, -60, R * 0.4), V(-R * 0.5, 60, R * 0.85), V(0, 0, R * 0.95) ];
+    G.wpIdx = 0;
+    const f = spawnNPC('freight', 'a', V(0, 0, -G.map.radius * 0.5), p.q);
+    f.hullMax = NPC.freight.hull; f.hull = f.hullMax;
+    f.regen = 70; f.delay = 6;          // heavy shield bank, recovers between waves
+    G.freighter = f;
+    spawnBoss();
+  }
+
+  G.on = true; G.paused = false;
+  document.getElementById('hud').classList.add('on');
+  hudBig(G.mode.name, G.map.name);
+  setTimeout(() => hudBig('', ''), 2200);
+  feed('MISSION START — ' + G.mode.name, '#8fe9ff');
+}
+
+function rollFoe() {
+  const r = Math.random();
+  if (G.diff.id === 'ace' && r > 0.86) return 'ace';
+  if (r < 0.30) return 'scout';
+  if (r < 0.66) return 'raider';
+  if (r < 0.88) return 'lancer';
+  return 'gunship';
+}
+
+function spawnBoss() {
+  // park the dreadnought ahead of the convoy so there is time to engage it
+  const wp = G.waypoints[Math.min(G.bossIdx + 1, G.waypoints.length - 1)];
+  const p = vadd(wp, vmul(vrandUnit(), 300));
+  const b = spawnNPC('dread', 'b', p);
+  b.scale = 1;
+  G.boss = b;
+  G.bossIdx++;
+  feed('DREADNOUGHT DETECTED', '#ff7b7b');
+  hudBig('DREADNOUGHT', 'CAPITAL CONTACT — WEAPONS FREE');
+  setTimeout(() => hudBig('', ''), 2600);
+  // escorts
+  for (let i = 0; i < 2; i++) spawnNPC(i ? 'raider' : 'lancer', 'b', vadd(p, vrandSphere(90)));
+}
+
+/* ------------------------------------------------------------ mode tick */
+function updateMatch(dt) {
+  G.elapsed += dt;
+  const m = G.mode;
+
+  // cull expired temporary units (warden drones)
+  for (const s of G.ships) {
+    if (s.life && s.alive && G.t - s.born > s.life) {
+      s.alive = false; explode(s.pos, s.radius * 1.8, [150,255,190], 0.5, s.vel);
+    }
+  }
+
+  // ---- reinforcements -------------------------------------------------
+  if (m.reinforce || m.escort) {
+    G.spawnT -= dt;
+    const foes = G.ships.filter(s => s.alive && s.team === 'b' && !s.boss).length;
+    const allies = G.ships.filter(s => s.alive && s.team === 'a' && !s.isPlayer && !s.temp && s.kind !== 'freight').length;
+    const foeCap = (m.foes || 4) + (G.diff.id === 'ace' ? 2 : G.diff.id === 'veteran' ? 1 : 0);
+    if (G.spawnT <= 0) {
+      if (foes < foeCap) { spawnNPC(rollFoe(), 'b', edgeSpawn('b')); G.spawnT = rnd(2.5, 5); }
+      else if (allies < (m.allies || 3)) {
+        spawnNPC(Math.random() < 0.5 ? 'wingman2' : 'wingman', 'a', edgeSpawn('a'));
+        G.spawnT = rnd(3, 6);
+      } else G.spawnT = 2;
+    }
+  }
+
+  // ---- mode objectives ------------------------------------------------
+  if (m.id === 'beacon') {
+    for (const b of G.beacons) {
+      b.spin += dt * 0.6;
+      let na = 0, nb = 0;
+      for (const s of G.ships) {
+        if (!s.alive || s.noTarget) continue;
+        if (vdist2(s.pos, b.pos) < b.rad * b.rad) { if (s.team === 'a') na++; else nb++; }
+      }
+      let dir = 0;
+      if (na > nb) dir = 1; else if (nb > na) dir = -1;
+      if (dir !== 0) {
+        const rate = 0.27 * (1 + Math.min(2, Math.abs(na - nb) - 1) * 0.3);
+        b.prog = clamp(b.prog + dir * rate * dt, -1, 1);
+      }
+      const own = b.prog >= 1 ? 'a' : b.prog <= -1 ? 'b' : (Math.abs(b.prog) < 0.999 ? 'n' : b.own);
+      if (own !== b.own && own !== 'n') {
+        feed(b.name + (own === 'a' ? ' CAPTURED' : ' LOST'), own === 'a' ? '#8fe9ff' : '#ff9f9f');
+        if (own === 'a') G.stats.obj += 1;
+      }
+      b.own = own;
+    }
+    let ha = 0, hb = 0;
+    for (const b of G.beacons) { if (b.own === 'a') ha++; else if (b.own === 'b') hb++; }
+    G.scoreA += ha * 3.4 * dt;
+    G.scoreB += hb * 3.4 * dt;
+    if (G.scoreA >= G.limit) endMatch(true, 'BEACON NETWORK SECURED');
+    else if (G.scoreB >= G.limit) endMatch(false, 'BEACON NETWORK LOST');
+  }
+
+  if (m.id === 'tdm') {
+    if (G.scoreA >= G.limit) endMatch(true, 'ENEMY WING ELIMINATED');
+    else if (G.scoreB >= G.limit) endMatch(false, 'OUR WING WAS BROKEN');
+  }
+
+  if (m.id === 'escort') {
+    const f = G.freighter;
+    const total = m.bosses || 3;
+    if (G.boss && !G.boss.alive) {
+      feed('DREADNOUGHT DESTROYED', '#ffd27b');
+      G.stats.obj += 2;
+      G.bossKills++;
+      G.boss = null;
+      G.bossRespawn = 12;                       // the next one moves up the lane
+    }
+    if (!G.boss && G.bossIdx < total) {
+      G.bossRespawn -= dt;
+      if (G.bossRespawn <= 0) spawnBoss();
+    }
+    if (f && f.alive) {
+      const wp = G.waypoints[G.wpIdx];
+      if (wp && vdist(f.pos, wp) < 110) {
+        G.wpIdx++;
+        G.stats.obj++;
+        if (G.wpIdx < G.waypoints.length) feed('WAYPOINT ' + G.wpIdx + ' REACHED', '#8fe9ff');
+        else feed('CONVOY AT DESTINATION', '#8fe9ff');
+      }
+      // the run only counts when the lane is clear of capital ships
+      if (G.wpIdx >= G.waypoints.length && G.bossKills >= total)
+        endMatch(true, 'CONVOY DELIVERED');
+    }
+  }
+}
+
+function endMatch(win, why) {
+  if (G.over) return;
+  G.over = true; G.result = { win, why };
+  hudBig(win ? 'VICTORY' : 'DEFEAT', why);
+  G.endTimer = 3.0;
+}
+function finishMatch() {
+  G.on = false;
+  document.getElementById('hud').classList.remove('on');
+  if (document.pointerLockElement) document.exitPointerLock();
+  showResults();
+}
+/* =========================================================================
+   SPACESHIP SENSATION — 7. WORLD DRAW + HUD
+   ========================================================================= */
+const _draws = [];
+
+function drawWorld() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawSky();
+
+  // volumetric-ish nebula puffs, behind everything
+  if (G.clouds && G.clouds.length) {
+    ctx.globalCompositeOperation = 'lighter';
+    for (const c of G.clouds) {
+      const s = worldToScreen(c.pos);
+      if (!s) continue;
+      glow(s.x, s.y, c.r * s.k, c.c, c.a);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  drawStars();
+
+  // ---------- opaque geometry, far to near ----------
+  _draws.length = 0;
+  for (const r of G.rocks) {
+    const c = toCam(r.pos);
+    if (c.z < -r.radius || c.z > ENV.fogFar + r.radius) continue;
+    _draws.push({ z: c.z, o: r, t: 'rock' });
+  }
+  for (const s of G.ships) {
+    if (!s.alive) continue;
+    const c = toCam(s.pos);
+    if (c.z < -s.radius * 2 || c.z > ENV.fogFar) continue;
+    _draws.push({ z: c.z, o: s, t: 'ship' });
+  }
+  for (const b of G.beacons) {
+    const c = toCam(b.pos);
+    if (c.z < -20) continue;
+    _draws.push({ z: c.z, o: b, t: 'beacon' });
+  }
+  for (const f of G.fx) {
+    if (f.kind !== 'debris') continue;
+    const c = toCam(f.pos);
+    if (c.z < 0) continue;
+    _draws.push({ z: c.z, o: f, t: 'debris' });
+  }
+  _draws.sort((a, b) => b.z - a.z);
+
+  for (const d of _draws) {
+    const o = d.o;
+    if (d.t === 'rock') {
+      drawMesh(o.mesh, o.pos, o.q, o.scale, { wire: false });
+    } else if (d.t === 'ship') {
+      const opt = { flash: o.flash * 0.8 };
+      if (o.stun > 0) opt.tint = [90, 170, 255];
+      drawMesh(o.mesh, o.pos, o.q, o.scale, opt);
+    } else if (d.t === 'beacon') {
+      const mesh = o.own === 'a' ? MESH.beaconA : o.own === 'b' ? MESH.beaconB : MESH.beaconN;
+      drawMesh(mesh, o.pos, qaxis(V(0,1,0), o.spin), 3.4, {});
+    } else if (d.t === 'debris') {
+      drawMesh(MESH.chunk, o.pos, o.q, o.sz * 1.4,
+        { alpha: clamp(1 - o.t / o.life, 0, 1) });
+    }
+  }
+
+  // ---------- additive pass ----------
+  ctx.globalCompositeOperation = 'lighter';
+
+  // engine flares
+  for (const s of G.ships) {
+    if (!s.alive || !s.mesh.eng.length) continue;
+    const c = toCam(s.pos);
+    if (c.z < 1 || c.z > ENV.fogFar) continue;
+    const pw = (s.stun > 0 ? 0.15 : 0.55 + s.throttle * 0.75 + (s.boosting ? 0.9 : 0));
+    for (const e of s.mesh.eng) {
+      const wp = vadd(s.pos, qrot(s.q, vmul(e.p, s.scale)));
+      const sp = worldToScreen(wp);
+      if (!sp) continue;
+      const flick = 0.86 + Math.sin(G.t * 40 + s.id) * 0.14;
+      glow(sp.x, sp.y, e.r * s.scale * sp.k * (2.4 + pw * 2.4) * flick, e.c, 0.62 * pw);
+      glow(sp.x, sp.y, e.r * s.scale * sp.k * 0.9, [255, 255, 255], 0.5 * pw);
+    }
+    // shield shimmer when hit
+    if (s.flash > 0.05 && s.shield > 0) {
+      const sp = worldToScreen(s.pos);
+      if (sp) glow(sp.x, sp.y, s.radius * sp.k * 2.1, [110, 200, 255], s.flash * 0.4);
+    }
+  }
+
+  // bullets
+  for (const b of G.bullets) {
+    const a = worldToScreen(b.pos);
+    if (!a) continue;
+    const tail = vsub(b.pos, vmul(b.vel, b.len * 0.0022));
+    const bs = worldToScreen(tail);
+    ctx.strokeStyle = 'rgba(' + (b.glow[0]|0) + ',' + (b.glow[1]|0) + ',' + (b.glow[2]|0) + ',.95)';
+    ctx.lineWidth = Math.max(1, b.wid * a.k * 0.5);
+    ctx.lineCap = 'round';
+    if (bs) { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(bs.x, bs.y); ctx.stroke(); }
+    glow(a.x, a.y, Math.max(3, b.wid * a.k * 2.2), b.col, 0.55);
+  }
+
+  // missiles
+  for (const m of G.missiles) {
+    const a = worldToScreen(m.pos);
+    if (!a) continue;
+    const tail = vsub(m.pos, vmul(qfwd(m.q), 3.2));
+    const bs = worldToScreen(tail);
+    if (bs) {
+      ctx.strokeStyle = 'rgba(255,240,220,.9)';
+      ctx.lineWidth = Math.max(1, 1.6 * a.k * 0.4);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(bs.x, bs.y); ctx.stroke();
+    }
+    glow(a.x, a.y, Math.max(4, 3.4 * a.k), m.col, 0.75);
+  }
+
+  // beams
+  for (const bm of G.beams) {
+    const a = worldToScreen(bm.a), b = worldToScreen(bm.b);
+    if (!a || !b) continue;
+    const w = Math.max(1.6, bm.wid * a.k * 0.5);
+    ctx.strokeStyle = 'rgba(' + (bm.col[0]|0) + ',' + (bm.col[1]|0) + ',' + (bm.col[2]|0) + ',.5)';
+    ctx.lineWidth = w * 3.2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.strokeStyle = 'rgba(' + (bm.glow[0]|0) + ',' + (bm.glow[1]|0) + ',' + (bm.glow[2]|0) + ',.95)';
+    ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    glow(b.x, b.y, w * 6, bm.glow, 0.5);
+  }
+
+  // particles
+  for (const f of G.fx) {
+    const k = f.t / f.life;
+    if (f.kind === 'debris') continue;
+    const s = worldToScreen(f.pos);
+    if (!s) continue;
+    if (f.kind === 'blast') {
+      const r = f.rad * (0.35 + k * 1.5) * s.k;
+      glow(s.x, s.y, r, f.col, (1 - k) * 0.85);
+      glow(s.x, s.y, r * 0.4, [255, 250, 235], (1 - k) * 0.9);
+    } else if (f.kind === 'spark') {
+      glow(s.x, s.y, Math.max(1.5, f.sz * s.k * 2.4), f.col, (1 - k) * 0.9);
+    } else if (f.kind === 'smoke') {
+      glow(s.x, s.y, Math.max(2, f.sz * s.k * 5), f.col, (1 - k) * 0.22);
+    } else if (f.kind === 'emp') {
+      const r = f.rad * k * s.k;
+      ctx.strokeStyle = 'rgba(' + f.col[0] + ',' + f.col[1] + ',' + f.col[2] + ',' + (1 - k) * 0.8 + ')';
+      ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, TAU); ctx.stroke();
+      glow(s.x, s.y, r * 0.6, f.col, (1 - k) * 0.35);
+    }
+  }
+
+  // star flare for the Helion map
+  if (G.map && G.map.star_flare) {
+    const sd = vmul(ENV.sun, -1);
+    const z = vdot(sd, CAM.fwd);
+    if (z > 0.05) {
+      const x = vdot(sd, CAM.right) / z, y = vdot(sd, CAM.up) / z;
+      const sx = CX + x * FOC, sy = CY - y * FOC;
+      glow(sx, sy, VH * 0.42, [255, 190, 110], 0.30);
+      glow(sx, sy, VH * 0.13, [255, 245, 220], 0.7);
+    }
+  }
+
+  ctx.globalCompositeOperation = 'source-over';
+  drawOverlay();
+}
+
+/* ================================================================= HUD 3D */
+function drawOverlay() {
+  const p = G.player;
+  if (!p) return;
+  ctx.lineCap = 'butt';
+
+  // ---- objective markers ----
+  if (G.mode.id === 'beacon') {
+    for (const b of G.beacons) {
+      const col = b.own === 'a' ? '#6ff2ff' : b.own === 'b' ? '#ff5b5b' : '#d8d8e0';
+      const s = worldToScreen(b.pos);
+      const d = vdist(p.pos, b.pos);
+      if (s) {
+        ctx.strokeStyle = col; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.arc(s.x, s.y, 15, 0, TAU); ctx.stroke();
+        ctx.beginPath(); ctx.arc(s.x, s.y, 15, -Math.PI/2, -Math.PI/2 + TAU * Math.abs(b.prog));
+        ctx.strokeStyle = b.prog >= 0 ? '#6ff2ff' : '#ff5b5b'; ctx.lineWidth = 3.4; ctx.stroke();
+        ctx.fillStyle = col; ctx.font = '10px ui-monospace,Consolas,monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(b.name + '  ' + (d | 0) + 'm', s.x, s.y + 30);
+      } else edgeArrow(b.pos, col);
+    }
+  }
+  if (G.mode.id === 'escort') {
+    const wp = G.waypoints[G.wpIdx];
+    if (wp) {
+      const s = worldToScreen(wp);
+      if (s) {
+        ctx.strokeStyle = '#7dffa8'; ctx.lineWidth = 1.5;
+        bracket(s.x, s.y, 22, '#7dffa8', 1.5);
+        ctx.fillStyle = '#7dffa8'; ctx.font = '10px ui-monospace,Consolas,monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('NAV ' + (G.wpIdx + 1) + '  ' + (vdist(p.pos, wp) | 0) + 'm', s.x, s.y + 36);
+      } else edgeArrow(wp, '#7dffa8');
+    }
+    const f = G.freighter;
+    if (f && f.alive) {
+      const s = worldToScreen(f.pos);
+      if (s) {
+        bracket(s.x, s.y, 26 * Math.min(3, s.k * 0.5 + 0.6), 'rgba(180,220,140,.85)', 1.2);
+        ctx.fillStyle = 'rgba(180,220,140,.9)'; ctx.font = '10px ui-monospace,Consolas,monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('MV CALLISTO  ' + Math.round(f.hull / f.hullMax * 100) + '%', s.x, s.y - 34);
+      } else edgeArrow(f.pos, 'rgba(180,220,140,.85)');
+    }
+  }
+
+  if (!p.alive) return;
+
+  // ---- contact brackets ----
+  ctx.font = '9px ui-monospace,Consolas,monospace';
+  ctx.textAlign = 'center';
+  for (const s of G.ships) {
+    if (!s.alive || s === p) continue;
+    const isFoe = s.team !== p.team;
+    const sc = worldToScreen(s.pos);
+    const d = vdist(p.pos, s.pos);
+    if (!sc) { if (s === p.target) edgeArrow(s.pos, '#ff5b5b'); continue; }
+    const r = clamp(s.radius * sc.k * 1.25, 8, 130);
+    if (s === p.target) {
+      bracket(sc.x, sc.y, r + 6, '#ff8b8b', 2);
+      ctx.fillStyle = '#ffb0b0';
+      ctx.fillText((d | 0) + 'm', sc.x, sc.y + r + 20);
+    } else if (isFoe) {
+      if (d < 900) {
+        ctx.strokeStyle = 'rgba(255,110,110,.55)'; ctx.lineWidth = 1;
+        ctx.strokeRect(sc.x - r, sc.y - r, r * 2, r * 2);
+      }
+    } else if (d < 700 && s.kind !== 'freight') {
+      // (ally tick marks drawn below)
+      ctx.strokeStyle = 'rgba(110,220,255,.35)'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(sc.x - r, sc.y - r * 0.55); ctx.lineTo(sc.x - r, sc.y - r);
+      ctx.lineTo(sc.x - r * 0.55, sc.y - r);
+      ctx.moveTo(sc.x + r * 0.55, sc.y + r); ctx.lineTo(sc.x + r, sc.y + r);
+      ctx.lineTo(sc.x + r, sc.y + r * 0.55);
+      ctx.stroke();
+    }
+
+    // ---- enemy health bar ----
+    if (isFoe && !s.boss && d < 1100) {
+      const fade = clamp(1 - (d - 650) / 450, 0.3, 1);
+      const bw = clamp(r * 2.0, 30, 96);
+      const hullF = s.hullMax ? s.hull / s.hullMax : 0;
+      const shldF = s.shieldMax ? s.shield / s.shieldMax : 0;
+      healthBar(sc.x, sc.y - r - 13, bw, 4, hullF, shldF, fade, s === p.target);
+      if (s === p.target || d < 340) {
+        ctx.globalAlpha = fade;
+        ctx.fillStyle = s === p.target ? '#ffd2d2' : 'rgba(255,180,180,.75)';
+        ctx.font = '9px ui-monospace,Consolas,monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(s.name, sc.x, sc.y - r - 22);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  // ---- capital ship bar, pinned to the top of the screen ----
+  let capital = null, capD = 1e9;
+  for (const s of G.ships) {
+    if (!s.alive || !s.boss || s.team === p.team) continue;
+    const dd = vdist(p.pos, s.pos);
+    if (dd < capD) { capD = dd; capital = s; }
+  }
+  if (capital && capD < 2600) {
+    const bw = Math.min(560, VW * 0.46), bx = CX, by = 104;
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#ff9b9b';
+    ctx.font = '11px ui-monospace,Consolas,monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(capital.name + '   ·   ' + (capD | 0) + 'M', bx, by - 12);
+    healthBar(bx, by, bw, 9, capital.hull / capital.hullMax,
+              capital.shieldMax ? capital.shield / capital.shieldMax : 0, 1, true);
+    const cs = worldToScreen(capital.pos);
+    if (!cs) edgeArrow(capital.pos, '#ff5b5b');
+  }
+
+  // ---- lead reticle ----
+  const t = p.target;
+  let ls = null;
+  if (t && t.alive && p.prim.kind !== 'beam') {
+    const lead = leadPoint(p.pos, t.pos, relTargetVel(p, t), p.prim.spd);
+    if (lead) {
+      ls = worldToScreen(lead);
+      if (ls) {
+        const solved = p.fcsOn && p.fcsSolved;
+        ctx.strokeStyle = solved ? '#7dffa8' : '#ffe08a';
+        ctx.lineWidth = solved ? 2.4 : 1.8;
+        ctx.beginPath(); ctx.arc(ls.x, ls.y, 9, 0, TAU); ctx.stroke();
+        ctx.beginPath(); ctx.arc(ls.x, ls.y, 2, 0, TAU); ctx.stroke();
+      }
+    }
+  }
+
+  // ---- gunsight: drawn where the guns are actually pointing ----
+  const gunDir = p.aimDir || qfwd(p.q);
+  const as = worldToScreen(vadd(p.pos, vmul(gunDir, 420)));
+  if (as) {
+    const gl = clamp(p.gunLock || 0, 0, 1);
+    const hot = p.over ? '#ff5b5b' : p.fcsOn ? '#7dffa8' : gl > 0 ? '#ffe08a' : '#8ff6ff';
+    // arms close in as the director acquires, then snap green on lock
+    const inner = lerp(9, 5, gl), outer = lerp(19, 12, gl);
+    ctx.strokeStyle = hot; ctx.lineWidth = p.fcsOn ? 2.1 : 1.6;
+    ctx.beginPath();
+    ctx.moveTo(as.x - outer, as.y); ctx.lineTo(as.x - inner, as.y);
+    ctx.moveTo(as.x + inner, as.y); ctx.lineTo(as.x + outer, as.y);
+    ctx.moveTo(as.x, as.y - outer); ctx.lineTo(as.x, as.y - inner);
+    ctx.moveTo(as.x, as.y + inner); ctx.lineTo(as.x, as.y + outer);
+    ctx.stroke();
+    ctx.beginPath(); ctx.arc(as.x, as.y, 2.2, 0, TAU); ctx.fillStyle = hot; ctx.fill();
+    if (p.fcsOn) {
+      // tie the sight to the firing solution so the linkage is legible
+      if (ls) {
+        ctx.save(); ctx.setLineDash([3, 4]);
+        ctx.strokeStyle = 'rgba(125,255,168,.5)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(as.x, as.y); ctx.lineTo(ls.x, ls.y); ctx.stroke();
+        ctx.restore();
+      }
+      ctx.fillStyle = p.heat > 0.75 ? '#ff9b6b' : '#7dffa8';
+      ctx.font = '9px ui-monospace,Consolas,monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.fcsSolved ? 'FCS · ON SOLUTION' : 'FCS · TRAVERSE LIMIT', as.x, as.y - 30);
+      // heat load bar right under the sight — the cost of the assist
+      const bw = 46, bh = 3;
+      ctx.fillStyle = 'rgba(0,0,0,.5)';
+      ctx.fillRect(as.x - bw / 2, as.y + 26, bw, bh);
+      ctx.fillStyle = p.heat > 0.8 ? '#ff5b5b' : p.heat > 0.55 ? '#ffb347' : '#7dffa8';
+      ctx.fillRect(as.x - bw / 2, as.y + 26, bw * clamp(p.heat, 0, 1), bh);
+    }
+    // missile lock ring
+    const sw = p.sec;
+    if (sw.lock && t && t.alive) {
+      const f = clamp(p.lockT / sw.lock, 0, 1);
+      ctx.strokeStyle = f >= 1 ? '#7dffa8' : 'rgba(255,220,140,.8)';
+      ctx.lineWidth = f >= 1 ? 2.6 : 1.6;
+      ctx.beginPath(); ctx.arc(as.x, as.y, 36, -Math.PI/2, -Math.PI/2 + TAU * f); ctx.stroke();
+      if (f >= 1) {
+        ctx.fillStyle = '#7dffa8'; ctx.font = '9px ui-monospace,Consolas,monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('MISSILE LOCK', as.x, as.y + 52);
+      }
+    }
+  }
+
+  // ---- horizon / drift indicator ----
+  const v = vlen(p.vel);
+  if (v > 4) {
+    const vs = worldToScreen(vadd(p.pos, vmul(vnorm(p.vel), 300)));
+    if (vs) {
+      ctx.strokeStyle = 'rgba(140,255,190,.6)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(vs.x, vs.y, 7, 0, TAU); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(vs.x - 12, vs.y); ctx.lineTo(vs.x - 7, vs.y);
+      ctx.moveTo(vs.x + 7, vs.y); ctx.lineTo(vs.x + 12, vs.y);
+      ctx.moveTo(vs.x, vs.y - 12); ctx.lineTo(vs.x, vs.y - 7);
+      ctx.stroke();
+    }
+  }
+  if (!INPUT.locked) {
+    ctx.fillStyle = 'rgba(200,235,250,.7)';
+    ctx.font = '11px ui-monospace,Consolas,monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('CLICK TO CAPTURE MOUSE', CX, VH - 62);
+  }
+  // arena boundary warning
+  const dr = vlen(p.pos) / G.map.radius;
+  if (dr > 0.86) {
+    const a = (dr - 0.86) / 0.14;
+    ctx.strokeStyle = 'rgba(255,90,90,' + (0.25 + a * 0.5).toFixed(2) + ')';
+    ctx.lineWidth = 6; ctx.strokeRect(3, 3, VW - 6, VH - 6);
+  }
+}
+
+/* =============================================================== RADAR */
+const radarC = document.getElementById('radarC');
+const radarX = radarC.getContext('2d');
+function drawRadar() {
+  const p = G.player;
+  const W = 300, H = 300, cx = 150, cy = 150, R = 132;
+  radarX.setTransform(1, 0, 0, 1, 0, 0);
+  radarX.clearRect(0, 0, W, H);
+  radarX.save();
+  radarX.fillStyle = 'rgba(4,14,24,.55)';
+  radarX.beginPath(); radarX.arc(cx, cy, R, 0, TAU); radarX.fill();
+  radarX.strokeStyle = 'rgba(111,242,255,.35)'; radarX.lineWidth = 2;
+  radarX.beginPath(); radarX.arc(cx, cy, R, 0, TAU); radarX.stroke();
+  radarX.strokeStyle = 'rgba(111,242,255,.15)'; radarX.lineWidth = 1.5;
+  radarX.beginPath(); radarX.arc(cx, cy, R * 0.5, 0, TAU); radarX.stroke();
+  radarX.beginPath(); radarX.moveTo(cx, cy - R); radarX.lineTo(cx, cy + R);
+  radarX.moveTo(cx - R, cy); radarX.lineTo(cx + R, cy); radarX.stroke();
+  if (!p) { radarX.restore(); return; }
+
+  const RANGE = 950;
+  const qi = qconj(p.q);
+  const plot = (wp, col, sz, ring) => {
+    const rel = qrot(qi, vsub(wp, p.pos));
+    const d = vlen(rel);
+    const k = Math.min(1, d / RANGE) * R;
+    const hx = Math.hypot(rel.x, rel.z) || 1e-6;
+    const ux = rel.x / hx, uz = rel.z / hx;
+    const x = cx + ux * k, y = cy - uz * k;
+    radarX.fillStyle = col;
+    if (ring) {
+      radarX.strokeStyle = col; radarX.lineWidth = 2.5;
+      radarX.beginPath(); radarX.arc(x, y, sz + 4, 0, TAU); radarX.stroke();
+    }
+    radarX.beginPath(); radarX.arc(x, y, sz, 0, TAU); radarX.fill();
+    // elevation stalk
+    if (Math.abs(rel.y) > 25) {
+      radarX.strokeStyle = col; radarX.lineWidth = 1.4;
+      radarX.beginPath(); radarX.moveTo(x, y);
+      radarX.lineTo(x, y - clamp(rel.y / RANGE * R, -26, 26));
+      radarX.stroke();
+    }
+  };
+  for (const b of G.beacons)
+    plot(b.pos, b.own === 'a' ? '#6ff2ff' : b.own === 'b' ? '#ff5b5b' : '#c8c8d4', 5, true);
+  if (G.mode.id === 'escort' && G.waypoints[G.wpIdx]) plot(G.waypoints[G.wpIdx], '#7dffa8', 5, true);
+  for (const s of G.ships) {
+    if (!s.alive || s === p) continue;
+    const foe = s.team !== p.team;
+    plot(s.pos, s === p.target ? '#ffe08a' : foe ? '#ff5b5b' : '#6ff2ff',
+      s.boss ? 8 : s.kind === 'freight' ? 7 : 4, s === p.target || s.boss);
+  }
+  // own ship
+  radarX.fillStyle = '#eafcff';
+  radarX.beginPath();
+  radarX.moveTo(cx, cy - 8); radarX.lineTo(cx - 5.5, cy + 6); radarX.lineTo(cx + 5.5, cy + 6);
+  radarX.closePath(); radarX.fill();
+  radarX.restore();
+}
+
+/* ================================================================= DOM HUD */
+const $ = id => document.getElementById(id);
+let hudFlash = 0, warnMsg = '', warnT = 0;
+function hudHitFlash(v) { hudFlash = Math.max(hudFlash, v); }
+function hudWarn(t) { warnMsg = t; warnT = 2.0; }
+function hudBig(a, b) { $('msgbig').textContent = a; $('msgsub').textContent = b;
+  $('msgbig').style.opacity = a ? 1 : 0; $('msgsub').style.opacity = b ? 1 : 0; }
+
+function updateHUD(dt) {
+  const p = G.player;
+  if (!p) return;
+  const hp = clamp(p.hull / p.hullMax, 0, 1), sh = clamp(p.shield / p.shieldMax || 0, 0, 1);
+  const bo = clamp(p.boostPool / p.boostMax, 0, 1);
+  $('hullF').style.transform = 'scaleX(' + hp + ')';
+  $('shldF').style.transform = 'scaleX(' + sh + ')';
+  $('boostF').style.transform = 'scaleX(' + bo + ')';
+  $('hullN').textContent = Math.ceil(Math.max(0, p.hull));
+  $('shldN').textContent = Math.ceil(Math.max(0, p.shield));
+  $('boostN').textContent = Math.round(bo * 100);
+  $('spdN').textContent = Math.round(vlen(p.vel));
+
+  $('w1n').textContent = p.prim.name;
+  $('w1f').style.transform = 'scaleX(' + (1 - clamp(p.heat, 0, 1)) + ')';
+  $('w1f').style.background = p.over ? '#ff5b5b' : p.heat > 0.7 ? '#ffb347' : '#6ff2ff';
+  $('w1a').textContent = p.over ? 'OVERHEATED'
+    : 'HEAT ' + Math.round(p.heat * 100) + '%' +
+      (p.fcsOn ? '  ·  FCS ×' + (p.fcsHeatMul || 1).toFixed(1)
+       : !INPUT.fcs ? '  ·  FCS OFF'
+       : p.gunLock > 0 ? '  ·  ACQ ' + Math.round(p.gunLock * 100) + '%' : '');
+  $('w1n').style.color = p.fcsOn ? '#7dffa8' : '#eafcff';
+  $('w2n').textContent = p.sec.name;
+  $('w2f').style.transform = 'scaleX(' + clamp(1 - p.secCd / (p.sec.cd || 1), 0, 1) + ')';
+  $('w2a').textContent = '× ' + p.ammo;
+
+  $('overheat').style.opacity = warnT > 0 ? 1 : 0;
+  if (warnT > 0) { $('overheat').textContent = '— ' + warnMsg + ' —'; warnT -= dt; }
+
+  // objective panel
+  const m = G.mode;
+  $('objTitle').textContent = m.name + '  ·  ' + G.map.name;
+  if (m.id === 'escort') {
+    $('scA').textContent = G.freighter && G.freighter.alive
+      ? Math.round(G.freighter.hull / G.freighter.hullMax * 100) + '%' : '—';
+    $('scB').textContent = G.bossKills + '/' + G.mode.bosses;
+    $('objSub').textContent = 'HULL   ·   DREADNOUGHTS DOWN   ·   NAV ' +
+      Math.min(G.wpIdx + 1, G.waypoints.length) + '/' + G.waypoints.length;
+  } else {
+    $('scA').textContent = Math.floor(G.scoreA);
+    $('scB').textContent = Math.floor(G.scoreB);
+    $('objSub').textContent = m.id === 'beacon'
+      ? 'HOLD BEACONS · FIRST TO ' + G.limit
+      : 'FIRST WING TO ' + G.limit + ' KILLS';
+  }
+
+  // target readout
+  const t = p.target;
+  const ti = $('tgtinfo');
+  if (t && t.alive) {
+    ti.style.display = 'block';
+    $('tgtName').textContent = t.name;
+    $('tgtDist').textContent = Math.round(vdist(p.pos, t.pos)) + ' M   ·   ' +
+      Math.round(vlen(t.vel)) + ' M/S' + (t.stun > 0 ? '   ·   EMP' : '');
+    const f = clamp((t.hull + t.shield) / (t.hullMax + t.shieldMax), 0, 1);
+    $('tgtHullF').style.transform = 'scaleX(' + f + ')';
+  } else ti.style.display = 'none';
+
+  // kill feed
+  let html = '';
+  for (const f of G.feed) {
+    f.life -= dt;
+    if (f.life > 0) html += '<div class="kf" style="color:' + f.c + ';opacity:' +
+      clamp(f.life, 0, 1).toFixed(2) + '">' + f.t + '</div>';
+  }
+  G.feed = G.feed.filter(f => f.life > 0);
+  $('killfeed').innerHTML = html;
+
+  // damage vignette
+  hudFlash = Math.max(0, hudFlash - dt * 1.6);
+  $('dmgv').style.opacity = (hudFlash * 0.75).toFixed(2);
+  drawRadar();
+}
+/* =========================================================================
+   SPACESHIP SENSATION — 8. PROGRESSION, LOBBY UI, MAIN LOOP
+   ========================================================================= */
+const SAVEKEY = 'spaceshipsensation.save.v1';
+const SAVEKEY_OLD = 'voidbreak.save.v1';   // carry progress over from the old name
+const SAVE = {
+  credits: 500,
+  owned: { ship:['vanguard'], prim:['pulse'], sec:['seeker'], mod:['standard'] },
+  loadout: { ship:'vanguard', prim:'pulse', sec:'seeker', mod:'standard',
+             mode:'tdm', map:'belt', diff:'veteran' },
+  best: {}
+};
+function saveLoad() {
+  try {
+    const raw = window.localStorage &&
+      (localStorage.getItem(SAVEKEY) || localStorage.getItem(SAVEKEY_OLD));
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (d && typeof d.credits === 'number') {
+      SAVE.credits = d.credits;
+      for (const k in SAVE.owned) if (Array.isArray(d.owned && d.owned[k])) SAVE.owned[k] = d.owned[k];
+      if (d.loadout) Object.assign(SAVE.loadout, d.loadout);
+      if (d.best) SAVE.best = d.best;
+    }
+  } catch (e) { /* storage unavailable — run in memory */ }
+}
+function saveStore() {
+  try { if (window.localStorage) localStorage.setItem(SAVEKEY, JSON.stringify(SAVE)); }
+  catch (e) { /* ignore */ }
+}
+function owns(kind, id) { return SAVE.owned[kind].indexOf(id) >= 0; }
+
+/* --------------------------------------------------------------- screens */
+function showScreen(id) {
+  for (const s of document.querySelectorAll('.screen')) s.classList.toggle('on', s.id === id);
+  document.getElementById('hud').classList.toggle('on', id === null);
+  if (id === 'lobby') renderLobby();
+}
+function hideScreens() { for (const s of document.querySelectorAll('.screen')) s.classList.remove('on'); }
+
+/* ------------------------------------------------------------ lobby build */
+function statBars(sd) {
+  const rows = [
+    ['HULL',  sd.hull / 240],
+    ['SHLD',  sd.shield / 220],
+    ['SPD',   sd.speed / 90],
+    ['TURN',  sd.turn / 3.0]
+  ];
+  return '<div class="bars">' + rows.map(r =>
+    '<div class="bar"><b>' + r[0] + '</b><i><s style="width:' +
+    Math.round(clamp(r[1], 0, 1) * 100) + '%"></s></i></div>').join('') + '</div>';
+}
+
+function cardHTML(kind, item, extra) {
+  const own = owns(kind, item.id);
+  const eq = LOADOUT[kind === 'ship' ? 'ship' : kind] === item.id;
+  return '<div class="card' + (eq ? ' sel' : '') + (own ? '' : ' lock') +
+    '" data-kind="' + kind + '" data-id="' + item.id + '">' +
+    (eq ? '<div class="eq">EQUIPPED</div>' : '') +
+    '<div class="nm">' + item.name + '</div>' +
+    '<div class="cls">' + item.cls + '</div>' +
+    '<div class="dsc">' + item.dsc + '</div>' +
+    (extra || '') +
+    (own ? '<div class="own">✔ OWNED</div>'
+         : '<div class="cost">⬢ ' + item.cost.toLocaleString() + ' CR' +
+           (SAVE.credits >= item.cost ? ' — CLICK TO BUY' : ' — INSUFFICIENT') + '</div>') +
+    '</div>';
+}
+
+function weaponExtra(w) {
+  const rows = [];
+  if (w.kind === 'beam') { rows.push(['DPS', w.dps / 75], ['RANGE', w.range / 800], ['HEAT', w.heat / 0.26]); }
+  else if (w.dmg !== undefined && w.rof !== undefined) {
+    // heat bar shows sustained rate, not per-shot, so weapons compare honestly
+    rows.push(['DMG', w.dmg / 32], ['ROF', w.rof / 14], ['HEAT', w.heat * w.rof / 0.26]);
+  } else if (w.kind === 'emp') { rows.push(['AREA', w.radius / 160], ['AMMO', w.ammo / 24]); }
+  else if (w.kind === 'drone') { rows.push(['UNITS', w.count / 4], ['AMMO', w.ammo / 24]); }
+  else { rows.push(['DMG', w.dmg / 110], ['SALVO', (w.salvo || 1) / 4], ['AMMO', w.ammo / 24]); }
+  return '<div class="bars">' + rows.map(r =>
+    '<div class="bar"><b>' + r[0] + '</b><i><s style="width:' +
+    Math.round(clamp(r[1], 0, 1) * 100) + '%"></s></i></div>').join('') + '</div>';
+}
+
+function renderLobby() {
+  $('credN').textContent = SAVE.credits.toLocaleString();
+  $('shipCards').innerHTML = SHIPS.map(s => cardHTML('ship', s,
+    statBars(s) + (s.perkTxt ? '<div class="cost" style="color:#7dffa8">◆ ' + s.perkTxt + '</div>' : ''))).join('');
+  $('primCards').innerHTML = PRIMARY.map(w => cardHTML('prim', w, weaponExtra(w))).join('');
+  $('secCards').innerHTML = SECONDARY.map(w => cardHTML('sec', w, weaponExtra(w))).join('');
+  $('modCards').innerHTML = MODULES.map(w => cardHTML('mod', w, '')).join('');
+
+  $('modeCards').innerHTML = MODES.map(m =>
+    '<div class="mm' + (LOADOUT.mode === m.id ? ' sel' : '') + '" data-mm="mode" data-id="' + m.id + '">' +
+    '<div class="nm">' + m.name + '</div><div class="dsc">' + m.dsc + '</div></div>').join('');
+  $('mapCards').innerHTML = MAPS.map(m =>
+    '<div class="mm' + (LOADOUT.map === m.id ? ' sel' : '') + '" data-mm="map" data-id="' + m.id + '">' +
+    '<div class="swatch" style="background:' + m.sw + '"></div>' +
+    '<div class="nm">' + m.name + '</div><div class="dsc">' + m.dsc + '</div></div>').join('');
+  $('diffSel').innerHTML = DIFFS.map(d =>
+    '<div class="tab' + (LOADOUT.diff === d.id ? ' act' : '') + '" data-mm="diff" data-id="' + d.id + '">' +
+    d.name + ' <span style="opacity:.6">×' + d.pay.toFixed(1) + '</span></div>').join('');
+
+  const mo = MODES.find(m => m.id === LOADOUT.mode), ma = MAPS.find(m => m.id === LOADOUT.map);
+  const di = DIFFS.find(d => d.id === LOADOUT.diff);
+  $('launchInfo').innerHTML = mo.name + ' &middot; ' + ma.name + ' &middot; ' + di.name +
+    '<br>Payout multiplier ×' + di.pay.toFixed(1);
+  updateSide();
+}
+
+function updateSide() {
+  const sd = SHIPS.find(s => s.id === LOADOUT.ship);
+  const md = MODULES.find(s => s.id === LOADOUT.mod);
+  const st = statsFor(sd, md);
+  $('hgName').textContent = sd.name;
+  $('hgClass').textContent = sd.cls;
+  const rows = [
+    ['Hull', Math.round(st.hull)], ['Shield', Math.round(st.shield)],
+    ['Shield regen', st.regen.toFixed(1) + '/s'], ['Top speed', Math.round(st.speed) + ' m/s'],
+    ['Boost', '×' + st.boost.toFixed(2)], ['Turn rate', st.turn.toFixed(2) + ' rad/s']
+  ];
+  $('hgStats').innerHTML = rows.map(r =>
+    '<div class="kv"><span>' + r[0] + '</span><span>' + r[1] + '</span></div>').join('');
+  $('slShip').textContent = sd.name;
+  $('slPrim').textContent = PRIMARY.find(w => w.id === LOADOUT.prim).name;
+  $('slSec').textContent = SECONDARY.find(w => w.id === LOADOUT.sec).name;
+  $('slMod').textContent = md.name;
+}
+
+/* -------------------------------------------------------------- lobby events */
+document.addEventListener('click', e => {
+  const go = e.target.closest('[data-go]');
+  if (go) { showScreen(go.getAttribute('data-go')); return; }
+
+  const tab = e.target.closest('.tab[data-tab]');
+  if (tab) {
+    for (const t of document.querySelectorAll('.tab[data-tab]')) t.classList.remove('act');
+    tab.classList.add('act');
+    for (const p of document.querySelectorAll('.pane')) p.classList.remove('on');
+    $('pane-' + tab.getAttribute('data-tab')).classList.add('on');
+    return;
+  }
+  const mm = e.target.closest('[data-mm]');
+  if (mm) { LOADOUT[mm.getAttribute('data-mm')] = mm.getAttribute('data-id');
+    SAVE.loadout = Object.assign({}, LOADOUT); saveStore(); renderLobby(); return; }
+
+  const card = e.target.closest('.card');
+  if (card) {
+    const kind = card.getAttribute('data-kind'), id = card.getAttribute('data-id');
+    const src = kind === 'ship' ? SHIPS : kind === 'prim' ? PRIMARY : kind === 'sec' ? SECONDARY : MODULES;
+    const item = src.find(x => x.id === id);
+    if (!owns(kind, id)) {
+      if (SAVE.credits < item.cost) { flashCard(card, false); return; }
+      SAVE.credits -= item.cost;
+      SAVE.owned[kind].push(id);
+      flashCard(card, true);
+    }
+    LOADOUT[kind] = id;
+    SAVE.loadout = Object.assign({}, LOADOUT);
+    saveStore(); renderLobby();
+  }
+});
+function flashCard(el, ok) {
+  el.animate(
+    ok ? [{ boxShadow:'0 0 0 0 rgba(125,255,168,.9)' }, { boxShadow:'0 0 0 22px rgba(125,255,168,0)' }]
+       : [{ transform:'translateX(0)' }, { transform:'translateX(-7px)' }, { transform:'translateX(7px)' },
+          { transform:'translateX(0)' }],
+    { duration: ok ? 520 : 260 });
+}
+
+$('launchBtn').addEventListener('click', launch);
+$('launchBtn2').addEventListener('click', launch);
+function launch() {
+  hideScreens();
+  $('loading').classList.add('on');
+  setTimeout(() => {
+    startMatch();
+    $('loading').classList.remove('on');
+    if (mainCvs.requestPointerLock) mainCvs.requestPointerLock();
+  }, 260);
+}
+$('wipeBtn').addEventListener('click', () => {
+  SAVE.credits = 500;
+  SAVE.owned = { ship:['vanguard'], prim:['pulse'], sec:['seeker'], mod:['standard'] };
+  Object.assign(LOADOUT, { ship:'vanguard', prim:'pulse', sec:'seeker', mod:'standard' });
+  SAVE.loadout = Object.assign({}, LOADOUT);
+  saveStore();
+  $('wipeBtn').textContent = 'Progress Reset ✓';
+  setTimeout(() => { $('wipeBtn').textContent = 'Reset Progress'; }, 1400);
+});
+
+/* ---------------------------------------------------------------- pause */
+function togglePause() {
+  if (!G.on || G.over) return;
+  G.paused = !G.paused;
+  $('pauseM').classList.toggle('on', G.paused);
+  if (G.paused) { if (document.pointerLockElement) document.exitPointerLock(); }
+  else if (mainCvs.requestPointerLock) mainCvs.requestPointerLock();
+}
+$('resumeBtn').addEventListener('click', () => { G.paused = false; $('pauseM').classList.remove('on');
+  if (mainCvs.requestPointerLock) mainCvs.requestPointerLock(); });
+$('abortBtn').addEventListener('click', () => {
+  G.paused = false; G.on = false;
+  $('pauseM').classList.remove('on');
+  if (document.pointerLockElement) document.exitPointerLock();
+  const earned = Math.round(G.stats.credits);
+  SAVE.credits += earned; saveStore();
+  showScreen('lobby');
+});
+
+/* --------------------------------------------------------------- results */
+function showResults() {
+  const win = G.result && G.result.win;
+  const st = G.stats;
+  const base = Math.round(st.credits);
+  const objBonus = Math.round(st.obj * 120 * G.diff.pay);
+  const winBonus = win ? Math.round((G.mode.id === 'escort' ? 900 : 700) * G.diff.pay) : 0;
+  const total = base + objBonus + winBonus;
+  SAVE.credits += total;
+  const key = G.mode.id + '_' + G.map.id;
+  if (!SAVE.best[key] || total > SAVE.best[key]) SAVE.best[key] = total;
+  saveStore();
+
+  const acc = st.shots ? Math.round(st.hits / st.shots * 100) : 0;
+  $('resTitle').textContent = win ? 'VICTORY' : 'DEFEAT';
+  $('resTitle').style.color = win ? '#7dffa8' : '#ff7b7b';
+  $('resSub').textContent = (G.result ? G.result.why : '') + ' — ' + G.mode.name;
+  $('resStats').innerHTML = [
+    ['Kills', st.kills], ['Deaths', st.deaths],
+    ['Damage dealt', Math.round(st.dmgOut)], ['Accuracy', acc + '%'],
+    ['Objectives', st.obj], ['Time', Math.floor(G.elapsed / 60) + ':' +
+      String(Math.floor(G.elapsed % 60)).padStart(2, '0')]
+  ].map(r => '<div class="stat"><b>' + r[1] + '</b><span>' + r[0] + '</span></div>').join('');
+  $('resPay').innerHTML = '+ ' + total.toLocaleString() + ' CR' +
+    '<div style="font-size:11px;color:#7fa6b8;letter-spacing:.1em;margin-top:6px">' +
+    'combat ' + base + '  ·  objectives ' + objBonus + '  ·  victory ' + winBonus + '</div>';
+  $('resultM').classList.add('on');
+}
+$('againBtn').addEventListener('click', () => { $('resultM').classList.remove('on'); launch(); });
+$('toLobbyBtn').addEventListener('click', () => { $('resultM').classList.remove('on'); showScreen('lobby'); });
+
+/* --------------------------------------------------------- hangar preview */
+const hangarCvs = $('hangar');
+let hangarAng = 0;
+function drawHangar(dt) {
+  hangarAng += dt * 0.55;
+  const sd = SHIPS.find(s => s.id === LOADOUT.ship);
+  const mesh = MESH['ship_' + sd.id];
+  if (!mesh) return;
+  const sCam = { pos: CAM.pos, q: CAM.q, fwd: CAM.fwd, up: CAM.up, right: CAM.right };
+  const sEnv = { fog: ENV.fog, fogNear: ENV.fogNear, fogFar: ENV.fogFar, amb: ENV.amb, sun: ENV.sun };
+
+  setViewport(hangarCvs, hangarCvs.width, hangarCvs.height, 34);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, VW, VH);
+  ENV.fogNear = 400; ENV.fogFar = 900; ENV.amb = 0.34;
+  ENV.sun = vnorm(V(-0.4, 0.6, -0.5));
+
+  const dist = mesh.r * 4.6;
+  CAM.pos = V(0, mesh.r * 0.55, -dist);
+  CAM.q = qLookAt(vnorm(vsub(V(0, 0, 0), CAM.pos)), V(0, 1, 0));
+  camUpdateBasis();
+
+  const q = qmul(qaxis(V(0, 1, 0), hangarAng), qaxis(V(1, 0, 0), 0.16));
+  // hangar floor grid
+  ctx.strokeStyle = 'rgba(111,242,255,.10)'; ctx.lineWidth = 1;
+  for (let i = -5; i <= 5; i++) {
+    const a = worldToScreen(V(i * 3, -mesh.r * 1.5, -18)), b = worldToScreen(V(i * 3, -mesh.r * 1.5, 18));
+    if (a && b) { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+    const c = worldToScreen(V(-15, -mesh.r * 1.5, i * 3.6)), d = worldToScreen(V(15, -mesh.r * 1.5, i * 3.6));
+    if (c && d) { ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.stroke(); }
+  }
+  drawMesh(mesh, V(0, 0, 0), q, 1, {});
+  ctx.globalCompositeOperation = 'lighter';
+  for (const e of mesh.eng) {
+    const sp = worldToScreen(qrot(q, e.p));
+    if (sp) { glow(sp.x, sp.y, e.r * sp.k * 3.4, e.c, 0.5);
+              glow(sp.x, sp.y, e.r * sp.k * 1.1, [255,255,255], 0.45); }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+
+  CAM.pos = sCam.pos; CAM.q = sCam.q; CAM.fwd = sCam.fwd; CAM.up = sCam.up; CAM.right = sCam.right;
+  ENV.fog = sEnv.fog; ENV.fogNear = sEnv.fogNear; ENV.fogFar = sEnv.fogFar;
+  ENV.amb = sEnv.amb; ENV.sun = sEnv.sun;
+  useMainCanvas();
+}
+
+/* ============================================================== MAIN LOOP */
+let lastT = 0;
+function step(dt) {
+  G.t += dt; G.dt = dt;
+  updatePlayer(dt);
+  for (const s of G.ships) {
+    if (!s.alive || s.isPlayer) continue;
+    if (s.ai) updateAI(s, dt);
+  }
+  for (const s of G.ships) if (s.alive) integrateShip(s, dt);
+  stepBullets(dt);
+  stepMissiles(dt);
+  stepFx(dt);
+  for (const r of G.rocks) r.q = qnorm(qmul(r.q, qaxis(vnorm(r.spin), vlen(r.spin) * dt)));
+  updateMatch(dt);
+  updateCamera(dt);
+  // reap
+  if (G.ships.length > 0) {
+    let w = 0;
+    for (let i = 0; i < G.ships.length; i++) {
+      const s = G.ships[i];
+      if (s.alive || s.isPlayer) G.ships[w++] = s;
+    }
+    G.ships.length = w;
+  }
+  if (G.over) { G.endTimer -= dt; if (G.endTimer <= 0) finishMatch(); }
+}
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - lastT) / 1000) || 0.016;
+  lastT = now;
+  if (G.on && !G.paused && !document.hidden) {
+    // fixed sub-stepping keeps collisions stable at low frame rates
+    let rem = dt;
+    while (rem > 0) { const s = Math.min(rem, 0.0225); step(s); rem -= s; }
+  }
+  if (G.on) { drawWorld(); updateHUD(dt); }
+  else if ($('lobby').classList.contains('on')) drawHangar(dt);
+}
+
+/* ================================================================== BOOT */
+function boot() {
+  buildMeshes();
+  MESH.chunk = mkRock(31, 0, 0.85, [116, 122, 132]);
+  saveLoad();
+  Object.assign(LOADOUT, SAVE.loadout);
+  // guard against a save that references something not owned
+  if (!owns('ship', LOADOUT.ship)) LOADOUT.ship = 'vanguard';
+  if (!owns('prim', LOADOUT.prim)) LOADOUT.prim = 'pulse';
+  if (!owns('sec',  LOADOUT.sec))  LOADOUT.sec  = 'seeker';
+  if (!owns('mod',  LOADOUT.mod))  LOADOUT.mod  = 'standard';
+  showScreen('title');
+  requestAnimationFrame(frame);
+}
+boot();
+
+</script>
+</body>
+</html>
